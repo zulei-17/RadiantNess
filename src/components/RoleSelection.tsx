@@ -1,9 +1,9 @@
 import { motion } from "motion/react";
-import { User, GraduationCap, Users, HeartHandshake, ArrowLeft } from "lucide-react";
+import { User, GraduationCap, Users, HeartHandshake, ArrowLeft, School } from "lucide-react";
 import { cn } from "../lib/utils";
 
 interface RoleSelectionProps {
-  onSelect: (role: "student" | "teacher_parent" | "ngo_requester") => void;
+  onSelect: (role: "student" | "parent" | "school" | "ngo_requester") => void;
   onBack: () => void;
 }
 
@@ -17,11 +17,18 @@ export default function RoleSelection({ onSelect, onBack }: RoleSelectionProps) 
       color: "bg-blue-50 text-blue-600",
     },
     {
-      id: "teacher_parent",
-      title: "Teacher / Parent",
-      description: "I want to support and guide others.",
+      id: "parent",
+      title: "Parent",
+      description: "I want to support my child's growth.",
       icon: Users,
       color: "bg-orange-50 text-orange-600",
+    },
+    {
+      id: "school",
+      title: "School",
+      description: "I want to guide and monitor my students.",
+      icon: School,
+      color: "bg-emerald-50 text-emerald-600",
     },
     {
       id: "ngo_requester",

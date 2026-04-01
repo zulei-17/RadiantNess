@@ -9,7 +9,7 @@
         "displayName": { "type": "string", "description": "The user's chosen name." },
         "streak": { "type": "integer", "description": "Current daily streak." },
         "confidenceScore": { "type": "integer", "description": "Current confidence score (0-100)." },
-        "userRole": { "type": "string", "enum": ["student", "teacher_parent", "ngo_requester", "admin"], "description": "The user's primary role." },
+        "userRole": { "type": "string", "enum": ["student", "parent", "school", "ngo_requester", "admin"], "description": "The user's primary role." },
         "schoolId": { "type": "string", "description": "Associated school ID (for teachers)." },
         "ngoId": { "type": "string", "description": "Associated NGO ID (for NGOs)." },
         "lastCheckIn": { "type": "string", "format": "date-time", "description": "Last time the user checked in." },

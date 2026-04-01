@@ -11,6 +11,7 @@ import LandingPage from "./components/LandingPage";
 import OnboardingQuiz from "./components/OnboardingQuiz";
 import SafetyPrivacy from "./components/SafetyPrivacy";
 import RoleSelection from "./components/RoleSelection";
+import RoleOnboarding from "./components/RoleOnboarding";
 import StudentDashboard from "./components/dashboards/StudentDashboard";
 import TeacherDashboard from "./components/dashboards/TeacherDashboard";
 import NGODashboard from "./components/dashboards/NGODashboard";
@@ -20,7 +21,7 @@ import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 
 export default function App() {
-  const [view, setView] = useState<"landing" | "onboarding" | "app" | "safety" | "role-selection">("landing");
+  const [view, setView] = useState<"landing" | "onboarding" | "role-onboarding" | "app" | "safety" | "role-selection">("landing");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -50,6 +51,13 @@ export default function App() {
             if (hasSeenLanding) {
               if (!data.userRole) {
                 setView("role-selection");
+              } else if (!data.onboardingData && data.userRole !== "admin") {
+                // If they have a role but haven't finished onboarding, send them there
+                if (data.userRole === "student") {
+                  setView("onboarding");
+                } else {
+                  setView("role-onboarding");
+                }
               } else {
                 setView("app");
               }
@@ -97,6 +105,7 @@ export default function App() {
           streak: 0,
           confidenceScore: 0,
           userRole: "student",
+          onboardingData: { skipped: true },
           createdAt: serverTimestamp(),
         };
         await setDoc(doc(db, "users", user.uid), userData);
@@ -125,7 +134,7 @@ export default function App() {
     return () => unsubscribe();
   }, [user]);
 
-  const handleRoleSelect = async (role: "student" | "teacher_parent" | "ngo_requester") => {
+  const handleRoleSelect = async (role: "student" | "parent" | "school" | "ngo_requester") => {
     if (!user) {
       // If not logged in, we trigger login first
       handleLogin();
@@ -135,28 +144,11 @@ export default function App() {
     setUserRole(role);
     
     try {
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (userDoc.exists()) {
-        await setDoc(doc(db, "users", user.uid), { userRole: role }, { merge: true });
-        setView("app");
+      // We always go to onboarding first to ensure profile is complete
+      if (role === "student") {
+        setView("onboarding");
       } else {
-        // New user
-        if (role === "student") {
-          setView("onboarding");
-        } else {
-          // For non-students, skip onboarding and create doc immediately
-          const userData = {
-            uid: user.uid,
-            displayName: user.displayName || "Radiant",
-            streak: 0,
-            confidenceScore: 0,
-            userRole: role,
-            createdAt: serverTimestamp(),
-          };
-          await setDoc(doc(db, "users", user.uid), userData);
-          setUserName(userData.displayName);
-          setView("app");
-        }
+        setView("role-onboarding");
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
@@ -169,10 +161,11 @@ export default function App() {
     try {
       const userData = {
         uid: user.uid,
-        displayName: data.name || user.displayName || "Radiant",
+        displayName: data.name || data.parent_basic?.fullName || data.school_basic?.schoolName || data.ngo_basic?.orgName || user.displayName || "Radiant",
         streak: 0,
         confidenceScore: 0,
-        userRole: "student", // Onboarding is now student-exclusive
+        userRole: userRole || "student",
+        onboardingData: data,
         createdAt: serverTimestamp(),
       };
 
@@ -180,6 +173,7 @@ export default function App() {
       setUserName(userData.displayName);
       setStreak(0);
       setConfidenceScore(0);
+      setActiveTab("dashboard");
       setView("app");
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
@@ -248,13 +242,23 @@ export default function App() {
       return <RoleSelection onSelect={handleRoleSelect} onBack={() => setView("landing")} />;
     }
 
+    if (view === "role-onboarding") {
+      return (
+        <RoleOnboarding 
+          role={userRole as any} 
+          onComplete={handleOnboardingComplete} 
+          onBack={() => setView("role-selection")} 
+        />
+      );
+    }
+
     const renderAppContent = () => {
       switch (activeTab) {
         case "dashboard":
           if (userRole === "student") {
             return <StudentDashboard userName={userName} streak={streak} confidenceScore={confidenceScore} />;
           }
-          if (userRole === "teacher_parent") {
+          if (userRole === "parent" || userRole === "school") {
             return <TeacherDashboard />;
           }
           if (userRole === "ngo_requester") {

@@ -23,7 +23,7 @@ export default function Navigation({ activeTab, setActiveTab, role }: Navigation
       ];
     }
 
-    if (role === "teacher_parent") {
+    if (role === "parent" || role === "school") {
       return [
         ...baseTabs,
         { id: "topics", icon: Heart, label: "Resources" },

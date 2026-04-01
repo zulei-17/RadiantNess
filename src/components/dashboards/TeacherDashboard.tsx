@@ -2,18 +2,26 @@ import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Package, Plus, Clock, CheckCircle, AlertCircle, BarChart3, ClipboardList } from "lucide-react";
 import { db, auth, handleFirestoreError, OperationType } from "../../lib/firebase";
-import { collection, addDoc, query, where, onSnapshot, serverTimestamp, orderBy } from "firebase/firestore";
+import { collection, addDoc, query, where, onSnapshot, serverTimestamp, orderBy, doc } from "firebase/firestore";
 import { cn } from "../../lib/utils";
 import WellBeingAnalytics from "./WellBeingAnalytics";
 
 export default function TeacherDashboard() {
   const [activeSubTab, setActiveSubTab] = useState<"supplies" | "analytics">("analytics");
   const [requests, setRequests] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [newRequest, setNewRequest] = useState({ productType: "Pads", quantity: 50 });
 
   useEffect(() => {
     if (!auth.currentUser) return;
+
+    // Fetch Profile
+    const unsubscribeProfile = onSnapshot(doc(db, "users", auth.currentUser.uid), (snapshot) => {
+      if (snapshot.exists()) {
+        setProfile(snapshot.data());
+      }
+    });
 
     const q = query(
       collection(db, "requests"),
@@ -27,7 +35,10 @@ export default function TeacherDashboard() {
       handleFirestoreError(error, OperationType.GET, "requests");
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeProfile();
+      unsubscribe();
+    };
   }, []);
 
   const handleSubmitRequest = async (e: React.FormEvent) => {
@@ -62,8 +73,14 @@ export default function TeacherDashboard() {
     <div className="space-y-8">
       <header className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-serif">School Dashboard</h1>
-          <p className="text-gray-500 text-sm italic">Support your students and monitor well-being.</p>
+          <h1 className="text-3xl font-serif">
+            {profile?.displayName || (profile?.userRole === "parent" ? "Parent Dashboard" : "School Dashboard")}
+          </h1>
+          <p className="text-gray-500 text-sm italic">
+            {profile?.userRole === "parent" 
+              ? `Supporting ${profile?.onboardingData?.parent_basic?.studentName || "your student"}'s growth.`
+              : "Support your students and monitor well-being."}
+          </p>
         </div>
         <div className="flex bg-white rounded-full p-1 border border-black/5 shadow-sm">
           <button 

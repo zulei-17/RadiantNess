@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Package, Plus, Clock, CheckCircle, AlertCircle, TrendingUp, Users } from "lucide-react";
+import { Package, Plus, Clock, CheckCircle, AlertCircle, TrendingUp, Users, MapPin } from "lucide-react";
 import { db, auth, handleFirestoreError, OperationType } from "../../lib/firebase";
 import { collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, updateDoc, doc, limit } from "firebase/firestore";
 import { cn } from "../../lib/utils";
@@ -8,10 +8,20 @@ import { cn } from "../../lib/utils";
 export default function NGODashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [donations, setDonations] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [newDonation, setNewDonation] = useState({ productType: "Pads", amount: 100 });
 
   useEffect(() => {
+    if (!auth.currentUser) return;
+
+    // Fetch NGO Profile
+    const unsubscribeProfile = onSnapshot(doc(db, "users", auth.currentUser.uid), (snapshot) => {
+      if (snapshot.exists()) {
+        setProfile(snapshot.data());
+      }
+    });
+
     // Listen for all pending requests
     const qRequests = query(
       collection(db, "requests"),
@@ -26,24 +36,22 @@ export default function NGODashboard() {
     });
 
     // Listen for NGO's own donations
-    if (auth.currentUser) {
-      const qDonations = query(
-        collection(db, "donations"),
-        orderBy("timestamp", "desc"),
-        limit(20)
-      );
-      const unsubscribeDonations = onSnapshot(qDonations, (snapshot) => {
-        setDonations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      }, (error) => {
-        handleFirestoreError(error, OperationType.GET, "donations");
-      });
-      return () => {
-        unsubscribeRequests();
-        unsubscribeDonations();
-      };
-    }
+    const qDonations = query(
+      collection(db, "donations"),
+      orderBy("timestamp", "desc"),
+      limit(20)
+    );
+    const unsubscribeDonations = onSnapshot(qDonations, (snapshot) => {
+      setDonations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "donations");
+    });
 
-    return () => unsubscribeRequests();
+    return () => {
+      unsubscribeProfile();
+      unsubscribeRequests();
+      unsubscribeDonations();
+    };
   }, []);
 
   const handleUpdateStatus = async (requestId: string, newStatus: string) => {
@@ -75,8 +83,18 @@ export default function NGODashboard() {
     <div className="space-y-8">
       <header className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-serif">NGO Dashboard</h1>
-          <p className="text-gray-500 text-sm italic">Empowering youth through support.</p>
+          <h1 className="text-3xl font-serif">
+            {profile?.displayName || "NGO Dashboard"}
+          </h1>
+          <p className="text-gray-500 text-sm italic">
+            {profile?.onboardingData?.ngo_basic?.specialization || "Empowering youth through support."}
+          </p>
+          {profile?.onboardingData?.ngo_location?.warehouseAddress && (
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1 flex items-center gap-1">
+              <MapPin size={10} />
+              {profile.onboardingData.ngo_location.warehouseAddress}
+            </p>
+          )}
         </div>
         <button 
           onClick={() => setShowDonationModal(true)}
