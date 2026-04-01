@@ -1,0 +1,109 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user-specific settings and progress.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The Firebase Auth UID." },
+        "displayName": { "type": "string", "description": "The user's chosen name." },
+        "streak": { "type": "integer", "description": "Current daily streak." },
+        "confidenceScore": { "type": "integer", "description": "Current confidence score (0-100)." },
+        "userRole": { "type": "string", "enum": ["student", "teacher_parent", "ngo_requester", "admin"], "description": "The user's primary role." },
+        "schoolId": { "type": "string", "description": "Associated school ID (for teachers)." },
+        "ngoId": { "type": "string", "description": "Associated NGO ID (for NGOs)." },
+        "lastCheckIn": { "type": "string", "format": "date-time", "description": "Last time the user checked in." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the account was created." }
+      },
+      "required": ["uid", "displayName", "streak", "confidenceScore"]
+    },
+    "MoodLog": {
+      "title": "Mood Log",
+      "description": "A daily check-in of the user's mood.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user who logged the mood." },
+        "mood": { "type": "string", "enum": ["great", "good", "okay", "low", "bad"], "description": "The mood type." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the mood was logged." }
+      },
+      "required": ["uid", "mood", "timestamp"]
+    },
+    "Mission": {
+      "title": "Daily Mission",
+      "description": "A mission accepted or completed by the user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user who accepted the mission." },
+        "title": { "type": "string", "description": "Title of the mission." },
+        "status": { "type": "string", "enum": ["accepted", "completed"], "description": "Current status." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When it was accepted/completed." }
+      },
+      "required": ["uid", "title", "status", "timestamp"]
+    },
+    "ChatMessage": {
+      "title": "Community Chat Message",
+      "description": "A message sent in the anonymous community chat.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The message content." },
+        "author": { "type": "string", "description": "Anonymous author name." },
+        "color": { "type": "string", "description": "Author's assigned color." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the message was sent." }
+      },
+      "required": ["text", "author", "color", "timestamp"]
+    },
+    "SanitaryRequest": {
+      "title": "Sanitary Product Request",
+      "description": "A request for sanitary products from a student or teacher.",
+      "type": "object",
+      "properties": {
+        "requesterUid": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "productType": { "type": "string" },
+        "quantity": { "type": "integer" },
+        "status": { "type": "string", "enum": ["pending", "approved", "shipped", "delivered"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requesterUid", "productType", "quantity", "status", "timestamp"]
+    },
+    "Donation": {
+      "title": "Donation",
+      "description": "A donation of products or funds from an NGO or business.",
+      "type": "object",
+      "properties": {
+        "donorUid": { "type": "string" },
+        "ngoId": { "type": "string" },
+        "amount": { "type": "integer" },
+        "productType": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["donorUid", "amount", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents."
+    },
+    "/users/{userId}/moods/{moodId}": {
+      "schema": "MoodLog",
+      "description": "User's mood history."
+    },
+    "/users/{userId}/missions/{missionId}": {
+      "schema": "Mission",
+      "description": "User's mission progress."
+    },
+    "/community_chat/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Global community chat messages."
+    },
+    "/requests/{requestId}": {
+      "schema": "SanitaryRequest",
+      "description": "Global requests for sanitary products."
+    },
+    "/donations/{donationId}": {
+      "schema": "Donation",
+      "description": "Global donations."
+    }
+  }
+}
