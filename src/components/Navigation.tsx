@@ -30,7 +30,7 @@ export default function Navigation({ activeTab, setActiveTab, role }: Navigation
       ];
     }
 
-    if (role === "ngo_requester") {
+    if (role === "ngo_business") {
       return [
         ...baseTabs,
         { id: "topics", icon: Heart, label: "Impact" },

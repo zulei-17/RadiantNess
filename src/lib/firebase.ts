@@ -10,13 +10,36 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 
 // Auth Helpers
+let isSigningIn = false;
+let lastSignInTime = 0;
+
 export const signInWithGoogle = async () => {
+  const now = Date.now();
+  // Prevent multiple calls within 2 seconds
+  if (isSigningIn || (now - lastSignInTime < 2000)) return null;
+  
   try {
+    isSigningIn = true;
+    lastSignInTime = now;
+    
+    // Small delay to ensure browser state is settled in iframe
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
-  } catch (error) {
+  } catch (error: any) {
+    // Handle common popup errors gracefully
+    if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+      console.log("User closed or cancelled the login popup.");
+      return null;
+    }
     console.error("Error signing in with Google:", error);
     throw error;
+  } finally {
+    // Add a small delay before resetting the flag
+    setTimeout(() => {
+      isSigningIn = false;
+    }, 1000);
   }
 };
 

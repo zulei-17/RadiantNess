@@ -11,6 +11,97 @@ interface OnboardingQuizProps {
 
 const QUESTIONS = [
   {
+    id: "signup_method",
+    question: "How would you like to join RadiantNess?",
+    options: [
+      { id: "A", text: "Sign up anonymously", value: "anonymous" },
+      { id: "B", text: "Connect to my school", value: "school" },
+    ],
+  },
+  {
+    id: "help_needed",
+    question: "What do you need help with the most right now?",
+    condition: (answers: any) => answers.signup_method === "anonymous",
+    options: [
+      { id: "A", text: "Sanitary supplies", value: "sanitary_products" },
+      { id: "B", text: "Clothes or school uniform", value: "clothes" },
+      { id: "C", text: "Stationery or books", value: "stationery" },
+      { id: "D", text: "Simply a confidence boost", value: "confidence" },
+    ],
+  },
+  {
+    id: "age_range",
+    question: "What is your age range?",
+    condition: (answers: any) => answers.signup_method === "anonymous",
+    options: [
+      { id: "A", text: "7 - 9 years old", value: "7-9" },
+      { id: "B", text: "9 - 12 years old", value: "9-12" },
+      { id: "C", text: "12 - 14 years old", value: "12-14" },
+      { id: "D", text: "15 - 18 years old", value: "15-18" },
+    ],
+  },
+  {
+    id: "country",
+    question: "Which country are you in?",
+    condition: (answers: any) => answers.signup_method === "anonymous",
+    type: "scroll_select",
+    options: [
+      "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan",
+      "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
+      "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic",
+      "Denmark", "Djibouti", "Dominica", "Dominican Republic",
+      "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia",
+      "Fiji", "Finland", "France",
+      "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana",
+      "Haiti", "Honduras", "Hungary",
+      "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy",
+      "Jamaica", "Japan", "Jordan",
+      "Kazakhstan", "Kenya", "Kiribati", "Korea, North", "Korea, South", "Kosovo", "Kuwait", "Kyrgyzstan",
+      "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg",
+      "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar",
+      "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Macedonia", "Norway",
+      "Oman",
+      "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal",
+      "Qatar",
+      "Romania", "Russia", "Rwanda",
+      "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria",
+      "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu",
+      "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
+      "Vanuatu", "Vatican City", "Venezuela", "Vietnam",
+      "Yemen",
+      "Zambia", "Zimbabwe"
+    ].map(c => ({ id: c, text: c, value: c })),
+  },
+  {
+    id: "province",
+    question: "What is your province or state?",
+    condition: (answers: any) => answers.signup_method === "anonymous",
+    type: "text",
+    placeholder: "e.g. Gauteng, California, Lagos...",
+  },
+  {
+    id: "city",
+    question: "What city do you live in?",
+    condition: (answers: any) => answers.signup_method === "anonymous",
+    type: "text",
+    placeholder: "e.g. Johannesburg, New York, Nairobi...",
+  },
+  {
+    id: "suburb",
+    question: "What area or suburb do you stay in?",
+    condition: (answers: any) => answers.signup_method === "anonymous",
+    type: "text",
+    placeholder: "e.g. Sandton, Brooklyn, Westlands...",
+  },
+  {
+    id: "school_name_optional",
+    question: "Which school are you in? (Optional)",
+    condition: (answers: any) => answers.signup_method === "anonymous",
+    type: "text",
+    placeholder: "Enter your school name...",
+    optional: true,
+  },
+  {
     id: "stress",
     question: "How often do you feel overwhelmed by stress or anxiety?",
     options: [
@@ -80,33 +171,97 @@ const QUESTIONS = [
       { id: "D", text: "Evolving — I'm still discovering my identity", value: "exploring" },
     ],
   },
+  {
+    id: "school_attendance",
+    question: "How often do you find it difficult to attend school?",
+    options: [
+      { id: "A", text: "Rarely — I attend almost every day", value: "rarely" },
+      { id: "B", text: "Sometimes — A few days a month", value: "sometimes" },
+      { id: "C", text: "Often — Once or twice a week", value: "often" },
+      { id: "D", text: "Very Often — It's hard to go consistently", value: "very_often" },
+    ],
+  },
+  {
+    id: "attendance_barriers",
+    question: "What is the primary reason that makes school attendance difficult for you?",
+    options: [
+      { id: "A", text: "Lack of proper sanitary products", value: "sanitary_products" },
+      { id: "B", text: "Lack of school uniform or proper clothes", value: "clothes" },
+      { id: "C", text: "Lack of stationery or books", value: "stationery" },
+      { id: "D", text: "Health or emotional well-being", value: "health_emotional" },
+    ],
+  },
+  {
+    id: "basic_needs",
+    question: "Do you feel you have all the basic supplies you need to succeed in school?",
+    options: [
+      { id: "A", text: "Yes, I have everything I need", value: "yes" },
+      { id: "B", text: "Mostly, but I'm missing a few things", value: "mostly" },
+      { id: "C", text: "No, I lack many essential supplies", value: "no" },
+      { id: "D", text: "I'm not sure where to get help", value: "unsure" },
+    ],
+  },
 ];
 
 export default function OnboardingQuiz({ onComplete, onSkip, onBack }: OnboardingQuizProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [name, setName] = useState("");
+  const [textInput, setTextInput] = useState("");
   const [isFinished, setIsFinished] = useState(false);
 
-  const handleNext = () => {
-    if (currentStep < QUESTIONS.length) {
-      setCurrentStep(prev => prev + 1);
+  const handleNext = (overrideAnswers?: Record<string, string>) => {
+    const currentAnswers = overrideAnswers || answers;
+    let nextStep = currentStep + 1;
+    
+    // Skip questions if condition is not met
+    while (nextStep <= QUESTIONS.length && QUESTIONS[nextStep - 1]?.condition && !QUESTIONS[nextStep - 1].condition(currentAnswers)) {
+      nextStep++;
+    }
+
+    if (nextStep <= QUESTIONS.length) {
+      setCurrentStep(nextStep);
+      // Reset text input for next step if it's a text type
+      const nextQuestion = QUESTIONS[nextStep - 1];
+      if (nextQuestion?.type === "text") {
+        setTextInput(currentAnswers[nextQuestion.id] || "");
+      }
     } else {
       setIsFinished(true);
     }
   };
 
   const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
+    let prevStep = currentStep - 1;
+    
+    // Skip questions if condition is not met
+    while (prevStep > 0 && QUESTIONS[prevStep - 1]?.condition && !QUESTIONS[prevStep - 1].condition(answers)) {
+      prevStep--;
+    }
+
+    if (prevStep >= 0) {
+      setCurrentStep(prevStep);
+      // Set text input for previous step if it's a text type
+      const prevQuestion = QUESTIONS[prevStep - 1];
+      if (prevQuestion?.type === "text") {
+        setTextInput(answers[prevQuestion.id] || "");
+      }
     } else {
       onBack();
     }
   };
 
   const handleOptionSelect = (questionId: string, value: string) => {
-    setAnswers(prev => ({ ...prev, [questionId]: value }));
-    setTimeout(() => handleNext(), 300);
+    const newAnswers = { ...answers, [questionId]: value };
+    setAnswers(newAnswers);
+    setTimeout(() => handleNext(newAnswers), 300);
+  };
+
+  const handleTextSubmit = () => {
+    const questionId = QUESTIONS[currentStep - 1].id;
+    const newAnswers = { ...answers, [questionId]: textInput };
+    setAnswers(newAnswers);
+    handleNext(newAnswers);
   };
 
   const progress = ((currentStep + 1) / (QUESTIONS.length + 1)) * 100;
@@ -208,32 +363,79 @@ export default function OnboardingQuiz({ onComplete, onSkip, onBack }: Onboardin
             ) : (
               <div className="space-y-10">
                 <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-radiant-pink bg-radiant-pink/5 px-4 py-1.5 rounded-full inline-block">
-                  {QUESTIONS[currentStep - 1].id.replace("_", " ")}
+                  {QUESTIONS[currentStep - 1].id.replace(/_/g, " ")}
                 </span>
                 <h2 className="text-4xl font-serif leading-tight tracking-tight">
                   {QUESTIONS[currentStep - 1].question}
                 </h2>
-                <div className="grid gap-5">
-                  {QUESTIONS[currentStep - 1].options.map((option) => (
+                
+                {QUESTIONS[currentStep - 1].type === "text" ? (
+                  <div className="space-y-6">
+                    <input
+                      type="text"
+                      value={textInput}
+                      onChange={(e) => setTextInput(e.target.value)}
+                      placeholder={QUESTIONS[currentStep - 1].placeholder}
+                      className="w-full bg-white rounded-[32px] py-7 px-10 shadow-sm border border-black/5 focus:outline-none focus:ring-4 focus:ring-radiant-pink/10 text-xl transition-all"
+                      autoFocus
+                      onKeyDown={(e) => e.key === "Enter" && (textInput.trim() || QUESTIONS[currentStep - 1].optional) && handleTextSubmit()}
+                    />
                     <motion.button
-                      key={option.id}
-                      whileHover={{ x: 10 }}
-                      onClick={() => handleOptionSelect(QUESTIONS[currentStep - 1].id, option.value)}
-                      className={cn(
-                        "w-full bg-white p-8 rounded-[32px] text-left shadow-sm border border-black/5 flex items-center justify-between group hover:border-radiant-pink/30 transition-all active:scale-98",
-                        answers[QUESTIONS[currentStep - 1].id] === option.value && "border-radiant-pink ring-4 ring-radiant-pink/5"
-                      )}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleTextSubmit}
+                      disabled={!textInput.trim() && !QUESTIONS[currentStep - 1].optional}
+                      className="w-full bg-radiant-pink text-white py-6 rounded-full font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-50"
                     >
-                      <span className="text-lg font-medium text-gray-700 pr-4">{option.text}</span>
-                      <div className={cn(
-                        "w-8 h-8 rounded-full border-2 border-gray-100 flex items-center justify-center transition-all shrink-0",
-                        answers[QUESTIONS[currentStep - 1].id] === option.value && "border-radiant-pink bg-radiant-pink text-white"
-                      )}>
-                        {answers[QUESTIONS[currentStep - 1].id] === option.value && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
-                      </div>
+                      {QUESTIONS[currentStep - 1].optional && !textInput.trim() ? "Skip" : "Continue"}
+                      <ArrowRight size={18} />
                     </motion.button>
-                  ))}
-                </div>
+                  </div>
+                ) : QUESTIONS[currentStep - 1].type === "scroll_select" ? (
+                  <div className="grid gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    {QUESTIONS[currentStep - 1].options.map((option) => (
+                      <motion.button
+                        key={option.id}
+                        whileHover={{ x: 10 }}
+                        onClick={() => handleOptionSelect(QUESTIONS[currentStep - 1].id, option.value)}
+                        className={cn(
+                          "w-full bg-white p-6 rounded-[24px] text-left shadow-sm border border-black/5 flex items-center justify-between group hover:border-radiant-pink/30 transition-all active:scale-98",
+                          answers[QUESTIONS[currentStep - 1].id] === option.value && "border-radiant-pink ring-4 ring-radiant-pink/5"
+                        )}
+                      >
+                        <span className="text-lg font-medium text-gray-700 pr-4">{option.text}</span>
+                        <div className={cn(
+                          "w-6 h-6 rounded-full border-2 border-gray-100 flex items-center justify-center transition-all shrink-0",
+                          answers[QUESTIONS[currentStep - 1].id] === option.value && "border-radiant-pink bg-radiant-pink text-white"
+                        )}>
+                          {answers[QUESTIONS[currentStep - 1].id] === option.value && <div className="w-2 h-2 bg-white rounded-full" />}
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid gap-5">
+                    {QUESTIONS[currentStep - 1].options.map((option) => (
+                      <motion.button
+                        key={option.id}
+                        whileHover={{ x: 10 }}
+                        onClick={() => handleOptionSelect(QUESTIONS[currentStep - 1].id, option.value)}
+                        className={cn(
+                          "w-full bg-white p-8 rounded-[32px] text-left shadow-sm border border-black/5 flex items-center justify-between group hover:border-radiant-pink/30 transition-all active:scale-98",
+                          answers[QUESTIONS[currentStep - 1].id] === option.value && "border-radiant-pink ring-4 ring-radiant-pink/5"
+                        )}
+                      >
+                        <span className="text-lg font-medium text-gray-700 pr-4">{option.text}</span>
+                        <div className={cn(
+                          "w-8 h-8 rounded-full border-2 border-gray-100 flex items-center justify-center transition-all shrink-0",
+                          answers[QUESTIONS[currentStep - 1].id] === option.value && "border-radiant-pink bg-radiant-pink text-white"
+                        )}>
+                          {answers[QUESTIONS[currentStep - 1].id] === option.value && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </motion.div>

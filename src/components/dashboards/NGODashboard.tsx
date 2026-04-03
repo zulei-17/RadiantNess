@@ -87,12 +87,14 @@ export default function NGODashboard() {
             {profile?.displayName || "NGO Dashboard"}
           </h1>
           <p className="text-gray-500 text-sm italic">
-            {profile?.onboardingData?.ngo_basic?.specialization || "Empowering youth through support."}
+            {profile?.onboardingData?.donation_specialization === 'other' 
+              ? profile?.onboardingData?.other_specialization?.other_spec 
+              : profile?.onboardingData?.donation_specialization || "Empowering youth through support."}
           </p>
-          {profile?.onboardingData?.ngo_location?.warehouseAddress && (
+          {profile?.onboardingData?.ngo_location?.city && (
             <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1 flex items-center gap-1">
               <MapPin size={10} />
-              {profile.onboardingData.ngo_location.warehouseAddress}
+              {profile.onboardingData.ngo_location.city}, {profile.onboardingData.ngo_location.country}
             </p>
           )}
         </div>

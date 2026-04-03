@@ -3,7 +3,7 @@ import { User, GraduationCap, Users, HeartHandshake, ArrowLeft, School } from "l
 import { cn } from "../lib/utils";
 
 interface RoleSelectionProps {
-  onSelect: (role: "student" | "parent" | "school" | "ngo_requester") => void;
+  onSelect: (role: "student" | "parent" | "school" | "ngo_business") => void;
   onBack: () => void;
 }
 
@@ -31,8 +31,8 @@ export default function RoleSelection({ onSelect, onBack }: RoleSelectionProps) 
       color: "bg-emerald-50 text-emerald-600",
     },
     {
-      id: "ngo_requester",
-      title: "NGO / Requester",
+      id: "ngo_business",
+      title: "NGO / Business",
       description: "I'm looking to collaborate or participate.",
       icon: HeartHandshake,
       color: "bg-purple-50 text-purple-600",
@@ -81,9 +81,6 @@ export default function RoleSelection({ onSelect, onBack }: RoleSelectionProps) 
           ))}
         </div>
 
-        <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">
-          You can change this later in settings
-        </p>
       </motion.div>
     </div>
   );

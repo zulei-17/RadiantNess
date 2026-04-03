@@ -4,15 +4,25 @@ import { Sparkles, Package, Heart, TrendingUp, CheckCircle } from "lucide-react"
 import MoodTracker from "../MoodTracker";
 import { db, auth, handleFirestoreError, OperationType } from "../../lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { cn } from "../../lib/utils";
 
 interface StudentDashboardProps {
   userName: string;
   streak: number;
   confidenceScore: number;
+  onboardingData?: any;
 }
 
-export default function StudentDashboard({ userName, streak, confidenceScore }: StudentDashboardProps) {
+export default function StudentDashboard({ userName, streak, confidenceScore, onboardingData }: StudentDashboardProps) {
   const [requestStatus, setRequestStatus] = useState<"idle" | "loading" | "success">("idle");
+
+  const needsSupplies = onboardingData?.answers?.help_needed === "sanitary_products" || 
+                        onboardingData?.answers?.help_needed === "clothes" || 
+                        onboardingData?.answers?.help_needed === "stationery" ||
+                        onboardingData?.answers?.attendance_barriers === "sanitary_products" || 
+                        onboardingData?.answers?.attendance_barriers === "clothes" || 
+                        onboardingData?.answers?.attendance_barriers === "stationery" ||
+                        onboardingData?.answers?.basic_needs === "no";
 
   const handleRequestSupplies = async () => {
     if (!auth.currentUser) return;
@@ -79,12 +89,23 @@ export default function StudentDashboard({ userName, streak, confidenceScore }: 
         </div>
       </section>
 
-      <section className="bg-white p-8 rounded-[32px] border border-black/5 shadow-sm">
+      <section className={cn(
+        "p-8 rounded-[32px] border shadow-sm transition-all duration-500",
+        needsSupplies 
+          ? "bg-radiant-pink/5 border-radiant-pink/20 ring-4 ring-radiant-pink/5" 
+          : "bg-white border-black/5"
+      )}>
         <div className="flex items-center gap-3 mb-4">
           <Package className="text-radiant-pink" size={24} />
-          <h3 className="text-xl font-serif">Sanitary Support</h3>
+          <h3 className="text-xl font-serif">
+            {needsSupplies ? "We're Here to Help" : "Sanitary Support"}
+          </h3>
         </div>
-        <p className="text-sm text-gray-500 mb-6 italic">Need supplies? Your school is here to help. Talk to your teacher or request anonymously.</p>
+        <p className="text-sm text-gray-500 mb-6 italic leading-relaxed">
+          {needsSupplies 
+            ? "We noticed you're facing some challenges with school supplies. Don't worry—RadiantNess and your school are here to support you. Request what you need below, and we'll handle the rest."
+            : "Need supplies? Your school is here to help. Talk to your teacher or request anonymously."}
+        </p>
         
         {requestStatus === "success" ? (
           <div className="flex items-center justify-center gap-2 text-green-600 font-bold uppercase tracking-widest text-xs py-4">

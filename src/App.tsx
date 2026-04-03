@@ -20,70 +20,173 @@ import { auth, db, signInWithGoogle, logout, handleFirestoreError, OperationType
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 
+import VerificationPage from "./components/VerificationPage";
+
 export default function App() {
-  const [view, setView] = useState<"landing" | "onboarding" | "role-onboarding" | "app" | "safety" | "role-selection">("landing");
+  const [view, setView] = useState<"landing" | "onboarding" | "role-onboarding" | "app" | "safety" | "role-selection" | "verification">("landing");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [onboardingData, setOnboardingData] = useState<any>(null);
+  const [pendingOnboardingData, setPendingOnboardingData] = useState<any>(null);
+  const [pendingVerificationData, setPendingVerificationData] = useState<any>(null);
   const [userName, setUserName] = useState("Radiant");
   const [streak, setStreak] = useState(0);
   const [confidenceScore, setConfidenceScore] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // Global error handler for internal Firebase errors
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      
-      const hasSeenLanding = sessionStorage.getItem("hasSeenLanding");
-
-      if (currentUser) {
-        // Fetch user data from Firestore
-        try {
-          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            setUserName(data.displayName || "Radiant");
-            setStreak(data.streak || 0);
-            setConfidenceScore(data.confidenceScore || 0);
-            setUserRole(data.userRole || null);
-            
-            // Only auto-redirect to app if they've already seen the landing page in this session
-            if (hasSeenLanding) {
-              if (!data.userRole) {
-                setView("role-selection");
-              } else if (!data.onboardingData && data.userRole !== "admin") {
-                // If they have a role but haven't finished onboarding, send them there
-                if (data.userRole === "student") {
-                  setView("onboarding");
-                } else {
-                  setView("role-onboarding");
-                }
-              } else {
-                setView("app");
-              }
-            } else {
-              setView("landing");
-            }
-          } else {
-            // New user, but we still want them to see landing first if they haven't
-            if (hasSeenLanding) {
-              setView("role-selection");
-            } else {
-              setView("landing");
-            }
-          }
-        } catch (error) {
-          handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
-          setView("landing");
-        }
-      } else {
-        setView("landing");
+    const handleError = (event: PromiseRejectionEvent) => {
+      if (event.reason?.message?.includes('INTERNAL ASSERTION FAILED')) {
+        console.warn('Caught internal Firebase assertion error, preventing crash.');
+        event.preventDefault();
       }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    };
+    window.addEventListener('unhandledrejection', handleError);
+    return () => window.removeEventListener('unhandledrejection', handleError);
   }, []);
+
+  const handleLogin = async () => {
+    if (isLoggingIn) return;
+    
+    try {
+      setIsLoggingIn(true);
+      sessionStorage.setItem("hasSeenLanding", "true");
+      const user = await signInWithGoogle();
+      if (!user) {
+        // User closed or cancelled the login popup
+        return;
+      }
+    } catch (error: any) {
+      // Handle common popup errors gracefully
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        console.log("User closed or cancelled the login popup.");
+      } else {
+        console.error("Login failed:", error);
+      }
+    } finally {
+      // Add a small delay before allowing another login attempt
+      setTimeout(() => setIsLoggingIn(false), 1000);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      sessionStorage.removeItem("hasSeenLanding");
+      await logout();
+      setView("landing");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  const handleOnboardingComplete = async (data: any) => {
+    if (userRole === "ngo_business" || userRole === "school") {
+      setPendingOnboardingData(data);
+      setView("verification");
+      return;
+    }
+
+    const activeUser = user;
+    if (!activeUser) {
+      // If not logged in, store data and trigger login
+      setPendingOnboardingData(data);
+      handleLogin();
+      return;
+    }
+
+    try {
+      const userData = {
+        uid: activeUser.uid,
+        displayName: data.name || data.parent_basic?.fullName || data.school_basic?.schoolName || data.ngo_basic?.orgName || data.primary_need ? "Parent" : activeUser.displayName || "Radiant",
+        streak: 0,
+        confidenceScore: 0,
+        userRole: userRole || "student",
+        onboardingData: data,
+        createdAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, "users", activeUser.uid), userData);
+      setUserName(userData.displayName);
+      setOnboardingData(userData.onboardingData);
+      setStreak(0);
+      setConfidenceScore(0);
+      setActiveTab("dashboard");
+      setView("app");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${activeUser.uid}`);
+    }
+  };
+
+  const handleVerificationComplete = async (verificationData: any) => {
+    setPendingVerificationData(verificationData);
+    
+    if (!user) {
+      handleLogin();
+    } else {
+      // If already logged in, save everything
+      saveVerifiedRoleData(user, pendingOnboardingData, verificationData);
+    }
+  };
+
+  const saveVerifiedRoleData = async (activeUser: FirebaseUser, onboarding: any, verification: any) => {
+    try {
+      const userData = {
+        uid: activeUser.uid,
+        displayName: onboarding.school_basic?.schoolName || onboarding.ngo_basic?.orgName || activeUser.displayName || "Radiant",
+        streak: 0,
+        confidenceScore: 0,
+        userRole: userRole,
+        onboardingData: onboarding,
+        verificationData: verification,
+        verified: false, // Pending verification
+        createdAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, "users", activeUser.uid), userData);
+      setUserName(userData.displayName);
+      setOnboardingData(userData.onboardingData);
+      setStreak(0);
+      setConfidenceScore(0);
+      setActiveTab("dashboard");
+      setView("app");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${activeUser.uid}`);
+    }
+  };
+
+  const handleRoleSelect = async (role: "student" | "parent" | "school" | "ngo_business") => {
+    setUserRole(role);
+    
+    if ((role === "student" || role === "ngo_business" || role === "school" || role === "parent") && !user) {
+      // For all roles, go to onboarding first before login
+      if (role === "student") {
+        setView("onboarding");
+      } else {
+        setView("role-onboarding");
+      }
+      return;
+    }
+
+    if (!user) {
+      // If not logged in, we trigger login first
+      handleLogin();
+      return;
+    }
+    
+    try {
+      // We always go to onboarding first to ensure profile is complete
+      if (role === "student") {
+        setView("onboarding");
+      } else {
+        setView("role-onboarding");
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
+    }
+  };
 
   const handleStartJourney = () => {
     sessionStorage.setItem("hasSeenLanding", "true");
@@ -117,6 +220,83 @@ export default function App() {
     setView("app");
   };
 
+  // Handle pending onboarding data after login
+  useEffect(() => {
+    if (user && pendingOnboardingData) {
+      if (userRole === "ngo_business" || userRole === "school") {
+        if (pendingVerificationData) {
+          saveVerifiedRoleData(user, pendingOnboardingData, pendingVerificationData);
+          setPendingOnboardingData(null);
+          setPendingVerificationData(null);
+        } else {
+          // This case shouldn't happen with the new flow, but for safety:
+          setView("verification");
+        }
+      } else {
+        handleOnboardingComplete(pendingOnboardingData);
+        setPendingOnboardingData(null);
+      }
+    }
+  }, [user, pendingOnboardingData, pendingVerificationData, userRole]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      
+      const hasSeenLanding = sessionStorage.getItem("hasSeenLanding");
+
+      if (currentUser) {
+        // Fetch user data from Firestore
+        try {
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setUserName(data.displayName || "Radiant");
+            setStreak(data.streak || 0);
+            setConfidenceScore(data.confidenceScore || 0);
+            setUserRole(data.userRole || null);
+            setOnboardingData(data.onboardingData || null);
+            
+            // Only auto-redirect to app if they've already seen the landing page in this session
+            if (hasSeenLanding) {
+              if (!data.userRole) {
+                setView("role-selection");
+              } else if (!data.onboardingData && data.userRole !== "admin") {
+                // If they have a role but haven't finished onboarding, send them there
+                if (data.userRole === "student") {
+                  setView("onboarding");
+                } else {
+                  setView("role-onboarding");
+                }
+              } else if (data.userRole === "ngo_business" && !data.verified) {
+                setView("verification");
+              } else {
+                setView("app");
+              }
+            } else {
+              setView("landing");
+            }
+          } else {
+            // New user, but we still want them to see landing first if they haven't
+            if (hasSeenLanding) {
+              setView("role-selection");
+            } else {
+              setView("landing");
+            }
+          }
+        } catch (error) {
+          handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
+          setView("landing");
+        }
+      } else {
+        setView("landing");
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   // Real-time sync for user stats
   useEffect(() => {
     if (!user) return;
@@ -126,6 +306,7 @@ export default function App() {
         const data = snapshot.data();
         setStreak(data.streak || 0);
         setConfidenceScore(data.confidenceScore || 0);
+        setOnboardingData(data.onboardingData || null);
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
@@ -133,71 +314,6 @@ export default function App() {
 
     return () => unsubscribe();
   }, [user]);
-
-  const handleRoleSelect = async (role: "student" | "parent" | "school" | "ngo_requester") => {
-    if (!user) {
-      // If not logged in, we trigger login first
-      handleLogin();
-      return;
-    }
-    
-    setUserRole(role);
-    
-    try {
-      // We always go to onboarding first to ensure profile is complete
-      if (role === "student") {
-        setView("onboarding");
-      } else {
-        setView("role-onboarding");
-      }
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
-    }
-  };
-
-  const handleOnboardingComplete = async (data: any) => {
-    if (!user) return;
-
-    try {
-      const userData = {
-        uid: user.uid,
-        displayName: data.name || data.parent_basic?.fullName || data.school_basic?.schoolName || data.ngo_basic?.orgName || user.displayName || "Radiant",
-        streak: 0,
-        confidenceScore: 0,
-        userRole: userRole || "student",
-        onboardingData: data,
-        createdAt: serverTimestamp(),
-      };
-
-      await setDoc(doc(db, "users", user.uid), userData);
-      setUserName(userData.displayName);
-      setStreak(0);
-      setConfidenceScore(0);
-      setActiveTab("dashboard");
-      setView("app");
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
-    }
-  };
-
-  const handleLogin = async () => {
-    try {
-      sessionStorage.setItem("hasSeenLanding", "true");
-      await signInWithGoogle();
-    } catch (error) {
-      console.error("Login failed:", error);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      sessionStorage.removeItem("hasSeenLanding");
-      await logout();
-      setView("landing");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
 
   const renderContent = () => {
     if (loading) {
@@ -252,16 +368,25 @@ export default function App() {
       );
     }
 
+    if (view === "verification") {
+      return (
+        <VerificationPage 
+          role={userRole as "school" | "ngo_business"}
+          onComplete={handleVerificationComplete} 
+        />
+      );
+    }
+
     const renderAppContent = () => {
       switch (activeTab) {
         case "dashboard":
           if (userRole === "student") {
-            return <StudentDashboard userName={userName} streak={streak} confidenceScore={confidenceScore} />;
+            return <StudentDashboard userName={userName} streak={streak} confidenceScore={confidenceScore} onboardingData={onboardingData} />;
           }
           if (userRole === "parent" || userRole === "school") {
             return <TeacherDashboard />;
           }
-          if (userRole === "ngo_requester") {
+          if (userRole === "ngo_business") {
             return <NGODashboard />;
           }
           if (userRole === "admin") {
