@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Package, Plus, Clock, CheckCircle, AlertCircle, BarChart3, ClipboardList } from "lucide-react";
-import { db, auth, handleFirestoreError, OperationType } from "../../lib/firebase";
+import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, addDoc, query, where, onSnapshot, serverTimestamp, orderBy, doc } from "firebase/firestore";
-import { cn } from "../../lib/utils";
+import { cn } from "../lib/utils";
 import WellBeingAnalytics from "./WellBeingAnalytics";
 
-export default function TeacherDashboard() {
+export default function SchoolDashboard({ user }: { user: any }) {
   const [activeSubTab, setActiveSubTab] = useState<"supplies" | "analytics">("analytics");
   const [requests, setRequests] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
@@ -63,6 +63,7 @@ export default function TeacherDashboard() {
     switch (status) {
       case "pending": return <Clock className="text-orange-500" size={18} />;
       case "approved": return <CheckCircle className="text-blue-500" size={18} />;
+      case "rejected": return <AlertCircle className="text-red-500" size={18} />;
       case "shipped": return <Package className="text-purple-500" size={18} />;
       case "delivered": return <CheckCircle className="text-green-500" size={18} />;
       default: return <AlertCircle className="text-gray-500" size={18} />;

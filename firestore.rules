@@ -52,8 +52,19 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "zslyanka@gmail.com" && request.auth.token.email_verified == true));
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    function isNGO() {
+      return isAuthenticated() &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userRole == 'ngo_business');
+    }
+
+    function isSchool() {
+      return isAuthenticated() &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userRole == 'school');
     }
 
     function hasRequiredFields(fields) {
@@ -76,13 +87,16 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return hasRequiredFields(['uid', 'displayName', 'streak', 'confidenceScore', 'createdAt']) &&
-             hasOnlyAllowedFields(['uid', 'displayName', 'streak', 'confidenceScore', 'createdAt', 'lastCheckIn', 'role', 'userRole']) &&
+             hasOnlyAllowedFields(['uid', 'displayName', 'streak', 'confidenceScore', 'createdAt', 'lastCheckIn', 'role', 'userRole', 'onboardingData', 'verificationData', 'verified', 'schoolId', 'ngoId']) &&
              data.uid == request.auth.uid &&
-             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 50 &&
-             data.streak is int && data.streak >= 0 &&
-             data.confidenceScore is int && data.confidenceScore >= 0 && data.confidenceScore <= 100 &&
-             (!('userRole' in data) || data.userRole in ['student', 'parent', 'school', 'ngo_requester']) &&
-             data.createdAt is timestamp;
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+             data.streak is number && data.streak >= 0 &&
+             data.confidenceScore is number && data.confidenceScore >= 0 && data.confidenceScore <= 100 &&
+             (!('userRole' in data) || data.userRole in ['student', 'parent', 'school', 'ngo_business', 'admin']) &&
+             (!('onboardingData' in data) || data.onboardingData is map) &&
+             (!('verificationData' in data) || data.verificationData is map) &&
+             (!('verified' in data) || data.verified is bool) &&
+             (data.createdAt is timestamp || data.createdAt == request.time);
     }
 
     function isValidMood(data, userId) {
@@ -111,14 +125,37 @@ service cloud.firestore {
              data.timestamp is timestamp;
     }
 
+    function isValidRequest(data) {
+      return hasRequiredFields(['requesterUid', 'productType', 'quantity', 'status', 'timestamp']) &&
+             hasOnlyAllowedFields(['requesterUid', 'schoolId', 'productType', 'quantity', 'status', 'timestamp']) &&
+             data.requesterUid is string &&
+             data.productType is string &&
+             data.quantity is number && data.quantity > 0 &&
+             data.status in ['pending', 'approved', 'rejected', 'shipped', 'delivered'] &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidDonation(data) {
+      return hasRequiredFields(['donorUid', 'amount', 'productType', 'timestamp']) &&
+             hasOnlyAllowedFields(['donorUid', 'ngoId', 'amount', 'productType', 'timestamp']) &&
+             data.donorUid == request.auth.uid &&
+             data.amount is number && data.amount > 0 &&
+             data.productType is string &&
+             data.timestamp is timestamp;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (!('role' in request.resource.data) || isAdmin());
-      allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    (!('role' in request.resource.data) || request.resource.data.role == 'user' || isAdmin());
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    ((!('role' in resource.data) && !('role' in request.resource.data)) || 
+                     (resource.data.get('role', 'user') == request.resource.data.get('role', 'user')) || 
+                     isAdmin());
 
       match /moods/{moodId} {
         allow read: if isOwner(userId) || isAdmin();
@@ -138,6 +175,19 @@ service cloud.firestore {
     match /community_chat/{messageId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isValidChatMessage(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /requests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (isSchool() || isAdmin());
+      allow update: if isAuthenticated() && (isNGO() || isAdmin()) && isValidRequest(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /donations/{donationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (isNGO() || isAdmin()) && isValidDonation(request.resource.data);
       allow update, delete: if isAdmin();
     }
   }

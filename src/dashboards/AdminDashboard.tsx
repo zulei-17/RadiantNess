@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Users, Package, TrendingUp, Shield, BarChart3 } from "lucide-react";
-import { db, handleFirestoreError, OperationType } from "../../lib/firebase";
+import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, onSnapshot, limit, getCountFromServer } from "firebase/firestore";
 
 export default function AdminDashboard() {

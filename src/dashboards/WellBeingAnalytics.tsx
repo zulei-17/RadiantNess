@@ -8,7 +8,7 @@ import {
   TrendingUp, TrendingDown, Users, Heart, Shield, 
   AlertCircle, Info, Activity, Smile, Frown, Meh 
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn } from "../lib/utils";
 
 const moodData = [
   { name: "Mon", mood: 75, stress: 20 },

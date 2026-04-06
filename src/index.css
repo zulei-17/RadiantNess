@@ -7,9 +7,10 @@
   
   --color-radiant-bg: #fff5f8;
   --color-radiant-ink: #1a1a1a;
-  --color-radiant-olive: #7c4dff;
-  --color-radiant-accent: #d682bd;
-  --color-radiant-pink: #f06292;
+  --color-radiant-primary-start: #ea80fc;
+  --color-radiant-primary-end: #ea80fc;
+  --color-radiant-accent: #dfcaec;
+  --color-radiant-pink: #ea80fc;
 }
 
 @layer base {

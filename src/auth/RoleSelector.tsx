@@ -2,12 +2,11 @@ import { motion } from "motion/react";
 import { User, GraduationCap, Users, HeartHandshake, ArrowLeft, School } from "lucide-react";
 import { cn } from "../lib/utils";
 
-interface RoleSelectionProps {
-  onSelect: (role: "student" | "parent" | "school" | "ngo_business") => void;
-  onBack: () => void;
+interface RoleSelectorProps {
+  onSelectRole: (user: { role: "student" | "parent" | "school" | "ngo" }) => void;
 }
 
-export default function RoleSelection({ onSelect, onBack }: RoleSelectionProps) {
+export default function RoleSelector({ onSelectRole }: RoleSelectorProps) {
   const roles = [
     {
       id: "student",
@@ -31,7 +30,7 @@ export default function RoleSelection({ onSelect, onBack }: RoleSelectionProps) 
       color: "bg-emerald-50 text-emerald-600",
     },
     {
-      id: "ngo_business",
+      id: "ngo",
       title: "NGO / Business",
       description: "I'm looking to collaborate or participate.",
       icon: HeartHandshake,
@@ -41,12 +40,6 @@ export default function RoleSelection({ onSelect, onBack }: RoleSelectionProps) 
 
   return (
     <div className="min-h-screen bg-radiant-bg flex items-center justify-center p-6 relative">
-      <button
-        onClick={onBack}
-        className="absolute top-8 left-8 p-3 text-gray-400 hover:text-radiant-pink transition-colors bg-white rounded-full shadow-sm border border-black/5"
-      >
-        <ArrowLeft size={20} />
-      </button>
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -64,7 +57,7 @@ export default function RoleSelection({ onSelect, onBack }: RoleSelectionProps) 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.1 }}
-              onClick={() => onSelect(role.id)}
+              onClick={() => onSelectRole({ role: role.id })}
               className={cn(
                 "group flex items-center gap-4 p-6 bg-white rounded-[24px] border border-black/5 shadow-sm",
                 "hover:border-radiant-pink hover:shadow-md transition-all text-left w-full"

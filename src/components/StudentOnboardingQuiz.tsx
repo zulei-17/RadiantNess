@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ArrowRight, ArrowLeft, Sparkles, CheckCircle2 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 
-interface OnboardingQuizProps {
+interface StudentOnboardingQuizProps {
   onComplete: (data: any) => void;
   onSkip: () => void;
   onBack: () => void;
@@ -203,7 +203,7 @@ const QUESTIONS = [
   },
 ];
 
-export default function OnboardingQuiz({ onComplete, onSkip, onBack }: OnboardingQuizProps) {
+export default function StudentOnboardingQuiz({ onComplete, onSkip, onBack }: StudentOnboardingQuizProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [name, setName] = useState("");
@@ -314,7 +314,7 @@ export default function OnboardingQuiz({ onComplete, onSkip, onBack }: Onboardin
         </div>
 
         <div className="mb-12 px-4">
-          <h1 className="text-xs font-bold uppercase tracking-[0.3em] text-radiant-pink mb-3">Onboarding Quiz</h1>
+          <h1 className="text-xs font-bold uppercase tracking-[0.3em] text-radiant-pink mb-3">Student Onboarding Quiz</h1>
           <p className="text-[11px] text-gray-400 uppercase tracking-widest leading-relaxed max-w-sm">
             Purpose: Identify stress patterns, emotional triggers, and coping methods to personalize your growth journey.
           </p>

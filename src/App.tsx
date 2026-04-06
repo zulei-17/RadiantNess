@@ -1,471 +1,147 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, Bell, User, Settings, LogOut, ArrowLeft } from "lucide-react";
-import { cn } from "./lib/utils";
-import Navigation from "./components/Navigation";
-import MoodTracker from "./components/MoodTracker";
-import AIChat from "./components/AIChat";
-import CommunityChat from "./components/CommunityChat";
-import TopicLibrary from "./components/TopicLibrary";
-import LandingPage from "./components/LandingPage";
-import OnboardingQuiz from "./components/OnboardingQuiz";
-import SafetyPrivacy from "./components/SafetyPrivacy";
-import RoleSelection from "./components/RoleSelection";
-import RoleOnboarding from "./components/RoleOnboarding";
-import StudentDashboard from "./components/dashboards/StudentDashboard";
-import TeacherDashboard from "./components/dashboards/TeacherDashboard";
-import NGODashboard from "./components/dashboards/NGODashboard";
-import AdminDashboard from "./components/dashboards/AdminDashboard";
-import { auth, db, signInWithGoogle, logout, handleFirestoreError, OperationType } from "./lib/firebase";
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
+import LandingPage from "./pages/LandingPage";
+import RoleSelector from "./auth/RoleSelector";
+import StudentDashboard from "./dashboards/StudentDashboard";
+import ParentDashboard from "./dashboards/ParentDashboard";
+import SchoolDashboard from "./dashboards/SchoolDashboard";
+import NGODashboard from "./dashboards/NGODashboard";
+import AdminDashboard from "./dashboards/AdminDashboard";
 
-import VerificationPage from "./components/VerificationPage";
+// 🔥 ADD THESE
+import StudentOnboarding from "./onboarding/StudentOnboarding";
+import ParentOnboarding from "./onboarding/ParentOnboarding";
+import SchoolOnboarding from "./onboarding/SchoolOnboarding";
+import NGOOnboarding from "./onboarding/NGOOnboarding";
+
+import { auth, db, signInWithGoogle } from "./lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function App() {
-  const [view, setView] = useState<"landing" | "onboarding" | "role-onboarding" | "app" | "safety" | "role-selection" | "verification">("landing");
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [onboardingData, setOnboardingData] = useState<any>(null);
-  const [pendingOnboardingData, setPendingOnboardingData] = useState<any>(null);
-  const [pendingVerificationData, setPendingVerificationData] = useState<any>(null);
-  const [userName, setUserName] = useState("Radiant");
-  const [streak, setStreak] = useState(0);
-  const [confidenceScore, setConfidenceScore] = useState(0);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [selectedRole, setSelectedRole] = useState(null);
 
-  // Global error handler for internal Firebase errors
+  const [hasStarted, setHasStarted] = useState(false);
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
+
   useEffect(() => {
-    const handleError = (event: PromiseRejectionEvent) => {
-      if (event.reason?.message?.includes('INTERNAL ASSERTION FAILED')) {
-        console.warn('Caught internal Firebase assertion error, preventing crash.');
-        event.preventDefault();
-      }
-    };
-    window.addEventListener('unhandledrejection', handleError);
-    return () => window.removeEventListener('unhandledrejection', handleError);
-  }, []);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
 
-  const handleLogin = async () => {
-    if (isLoggingIn) return;
-    
-    try {
-      setIsLoggingIn(true);
-      sessionStorage.setItem("hasSeenLanding", "true");
-      const user = await signInWithGoogle();
-      if (!user) {
-        // User closed or cancelled the login popup
-        return;
-      }
-    } catch (error: any) {
-      // Handle common popup errors gracefully
-      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-        console.log("User closed or cancelled the login popup.");
-      } else {
-        console.error("Login failed:", error);
-      }
-    } finally {
-      // Add a small delay before allowing another login attempt
-      setTimeout(() => setIsLoggingIn(false), 1000);
-    }
-  };
+        if (userDoc.exists()) {
+          const data = userDoc.data();
 
-  const handleLogout = async () => {
-    try {
-      sessionStorage.removeItem("hasSeenLanding");
-      await logout();
-      setView("landing");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
+          setUser({
+            ...firebaseUser,
+            ...data,
+            role: data.userRole || null
+          });
 
-  const handleOnboardingComplete = async (data: any) => {
-    if (userRole === "ngo_business" || userRole === "school") {
-      setPendingOnboardingData(data);
-      setView("verification");
-      return;
-    }
-
-    const activeUser = user;
-    if (!activeUser) {
-      // If not logged in, store data and trigger login
-      setPendingOnboardingData(data);
-      handleLogin();
-      return;
-    }
-
-    try {
-      const userData = {
-        uid: activeUser.uid,
-        displayName: data.name || data.parent_basic?.fullName || data.school_basic?.schoolName || data.ngo_basic?.orgName || data.primary_need ? "Parent" : activeUser.displayName || "Radiant",
-        streak: 0,
-        confidenceScore: 0,
-        userRole: userRole || "student",
-        onboardingData: data,
-        createdAt: serverTimestamp(),
-      };
-
-      await setDoc(doc(db, "users", activeUser.uid), userData);
-      setUserName(userData.displayName);
-      setOnboardingData(userData.onboardingData);
-      setStreak(0);
-      setConfidenceScore(0);
-      setActiveTab("dashboard");
-      setView("app");
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${activeUser.uid}`);
-    }
-  };
-
-  const handleVerificationComplete = async (verificationData: any) => {
-    setPendingVerificationData(verificationData);
-    
-    if (!user) {
-      handleLogin();
-    } else {
-      // If already logged in, save everything
-      saveVerifiedRoleData(user, pendingOnboardingData, verificationData);
-    }
-  };
-
-  const saveVerifiedRoleData = async (activeUser: FirebaseUser, onboarding: any, verification: any) => {
-    try {
-      const userData = {
-        uid: activeUser.uid,
-        displayName: onboarding.school_basic?.schoolName || onboarding.ngo_basic?.orgName || activeUser.displayName || "Radiant",
-        streak: 0,
-        confidenceScore: 0,
-        userRole: userRole,
-        onboardingData: onboarding,
-        verificationData: verification,
-        verified: false, // Pending verification
-        createdAt: serverTimestamp(),
-      };
-
-      await setDoc(doc(db, "users", activeUser.uid), userData);
-      setUserName(userData.displayName);
-      setOnboardingData(userData.onboardingData);
-      setStreak(0);
-      setConfidenceScore(0);
-      setActiveTab("dashboard");
-      setView("app");
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${activeUser.uid}`);
-    }
-  };
-
-  const handleRoleSelect = async (role: "student" | "parent" | "school" | "ngo_business") => {
-    setUserRole(role);
-    
-    if ((role === "student" || role === "ngo_business" || role === "school" || role === "parent") && !user) {
-      // For all roles, go to onboarding first before login
-      if (role === "student") {
-        setView("onboarding");
-      } else {
-        setView("role-onboarding");
-      }
-      return;
-    }
-
-    if (!user) {
-      // If not logged in, we trigger login first
-      handleLogin();
-      return;
-    }
-    
-    try {
-      // We always go to onboarding first to ensure profile is complete
-      if (role === "student") {
-        setView("onboarding");
-      } else {
-        setView("role-onboarding");
-      }
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
-    }
-  };
-
-  const handleStartJourney = () => {
-    sessionStorage.setItem("hasSeenLanding", "true");
-    // Go to role selection first to determine if they need onboarding
-    setView("role-selection");
-  };
-
-  const handleSkipLanding = () => {
-    sessionStorage.setItem("hasSeenLanding", "true");
-    setView("app");
-  };
-
-  const handleSkipOnboarding = async () => {
-    if (user) {
-      try {
-        const userData = {
-          uid: user.uid,
-          displayName: user.displayName || "Radiant",
-          streak: 0,
-          confidenceScore: 0,
-          userRole: "student",
-          onboardingData: { skipped: true },
-          createdAt: serverTimestamp(),
-        };
-        await setDoc(doc(db, "users", user.uid), userData);
-        setUserName(userData.displayName);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
-      }
-    }
-    setView("app");
-  };
-
-  // Handle pending onboarding data after login
-  useEffect(() => {
-    if (user && pendingOnboardingData) {
-      if (userRole === "ngo_business" || userRole === "school") {
-        if (pendingVerificationData) {
-          saveVerifiedRoleData(user, pendingOnboardingData, pendingVerificationData);
-          setPendingOnboardingData(null);
-          setPendingVerificationData(null);
+          setShowRoleSelector(!data.userRole);
         } else {
-          // This case shouldn't happen with the new flow, but for safety:
-          setView("verification");
+          setUser(firebaseUser);
+          setShowRoleSelector(true);
         }
       } else {
-        handleOnboardingComplete(pendingOnboardingData);
-        setPendingOnboardingData(null);
+        setUser(null);
+        setShowRoleSelector(false);
       }
-    }
-  }, [user, pendingOnboardingData, pendingVerificationData, userRole]);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      
-      const hasSeenLanding = sessionStorage.getItem("hasSeenLanding");
-
-      if (currentUser) {
-        // Fetch user data from Firestore
-        try {
-          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            setUserName(data.displayName || "Radiant");
-            setStreak(data.streak || 0);
-            setConfidenceScore(data.confidenceScore || 0);
-            setUserRole(data.userRole || null);
-            setOnboardingData(data.onboardingData || null);
-            
-            // Only auto-redirect to app if they've already seen the landing page in this session
-            if (hasSeenLanding) {
-              if (!data.userRole) {
-                setView("role-selection");
-              } else if (!data.onboardingData && data.userRole !== "admin") {
-                // If they have a role but haven't finished onboarding, send them there
-                if (data.userRole === "student") {
-                  setView("onboarding");
-                } else {
-                  setView("role-onboarding");
-                }
-              } else if (data.userRole === "ngo_business" && !data.verified) {
-                setView("verification");
-              } else {
-                setView("app");
-              }
-            } else {
-              setView("landing");
-            }
-          } else {
-            // New user, but we still want them to see landing first if they haven't
-            if (hasSeenLanding) {
-              setView("role-selection");
-            } else {
-              setView("landing");
-            }
-          }
-        } catch (error) {
-          handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
-          setView("landing");
-        }
-      } else {
-        setView("landing");
-      }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Real-time sync for user stats
-  useEffect(() => {
-    if (!user) return;
+  const handleGetStarted = () => {
+    setHasStarted(true);
+  };
 
-    const unsubscribe = onSnapshot(doc(db, "users", user.uid), (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        setStreak(data.streak || 0);
-        setConfidenceScore(data.confidenceScore || 0);
-        setOnboardingData(data.onboardingData || null);
+  // 🔥 NEW: finish onboarding → THEN login
+  const handleFinishOnboarding = async (answers: any) => {
+    try {
+      await signInWithGoogle();
+
+      if (auth.currentUser && selectedRole) {
+        await setDoc(
+          doc(db, "users", auth.currentUser.uid),
+          {
+            userRole: selectedRole,
+            onboardingData: answers, // 🔥 THIS IS KEY
+            createdAt: serverTimestamp(),
+            email: auth.currentUser.email,
+            displayName: auth.currentUser.displayName,
+            photoURL: auth.currentUser.photoURL
+          },
+          { merge: true }
+        );
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
-
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <div className="min-h-screen bg-radiant-bg flex items-center justify-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="w-12 h-12 border-4 border-radiant-pink border-t-transparent rounded-full"
-          />
-        </div>
-      );
+    } catch (error) {
+      console.error(error);
     }
+  };
 
-    if (view === "landing") {
-      return (
-        <LandingPage 
-          onStart={handleStartJourney} 
-          onSafety={() => setView("safety")}
-          onSkip={handleSkipLanding}
-          onLogin={handleLogin}
-          user={user}
-        />
-      );
+  // 🔄 Loading
+  if (loading) return <div>Loading...</div>;
+
+  const normalizeRole = (role: string) => {
+    if (role === "ngo_business" || role === "ngo_requester") return "ngo";
+    return role;
+  };
+
+  const role = user?.role ? normalizeRole(user.role) : null;
+
+  const renderDashboard = () => {
+    if (!role) return <div>No Role Assigned</div>;
+    switch (role) {
+      case "student":
+        return <StudentDashboard user={user} />;
+      case "parent":
+        return <ParentDashboard user={user} />;
+      case "school":
+        return <SchoolDashboard user={user} />;
+      case "ngo":
+        return <NGODashboard user={user} />;
+      case "admin":
+        return <AdminDashboard />;
+      default:
+        return <div>Invalid Role: {role}</div>;
     }
-
-    if (view === "safety") {
-      return <SafetyPrivacy onBack={() => setView("landing")} />;
-    }
-
-    if (view === "onboarding") {
-      return (
-        <OnboardingQuiz 
-          onComplete={handleOnboardingComplete} 
-          onSkip={handleSkipOnboarding} 
-          onBack={() => setView("role-selection")}
-        />
-      );
-    }
-
-    if (view === "role-selection") {
-      return <RoleSelection onSelect={handleRoleSelect} onBack={() => setView("landing")} />;
-    }
-
-    if (view === "role-onboarding") {
-      return (
-        <RoleOnboarding 
-          role={userRole as any} 
-          onComplete={handleOnboardingComplete} 
-          onBack={() => setView("role-selection")} 
-        />
-      );
-    }
-
-    if (view === "verification") {
-      return (
-        <VerificationPage 
-          role={userRole as "school" | "ngo_business"}
-          onComplete={handleVerificationComplete} 
-        />
-      );
-    }
-
-    const renderAppContent = () => {
-      switch (activeTab) {
-        case "dashboard":
-          if (userRole === "student") {
-            return <StudentDashboard userName={userName} streak={streak} confidenceScore={confidenceScore} onboardingData={onboardingData} />;
-          }
-          if (userRole === "parent" || userRole === "school") {
-            return <TeacherDashboard />;
-          }
-          if (userRole === "ngo_business") {
-            return <NGODashboard />;
-          }
-          if (userRole === "admin") {
-            return <AdminDashboard />;
-          }
-          return (
-            <div className="space-y-8">
-              <header>
-                <h1 className="text-4xl font-serif">Hello, {userName}.</h1>
-                <p className="text-gray-500 text-sm italic">Ready to shine today?</p>
-              </header>
-            </div>
-          );
-        case "journal":
-          return <AIChat />;
-        case "topics":
-          return <TopicLibrary />;
-        case "community":
-          return <CommunityChat />;
-        default:
-          return null;
-      }
-    };
-
-    return (
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => {
-              if (activeTab === "dashboard") {
-                setView("role-selection");
-              } else {
-                setActiveTab("dashboard");
-              }
-            }}
-            className="flex items-center gap-2 text-gray-400 hover:text-radiant-pink transition-colors text-xs font-bold uppercase tracking-widest"
-          >
-            <ArrowLeft size={16} />
-            {activeTab === "dashboard" ? "Back to Role Selection" : "Back to Dashboard"}
-          </button>
-          
-          {activeTab === "dashboard" && (
-            <div className="flex gap-3">
-              <button className="w-10 h-10 rounded-full bg-white shadow-sm border border-black/5 flex items-center justify-center text-gray-400">
-                <Bell size={20} />
-              </button>
-              <button 
-                onClick={handleLogout}
-                className="w-10 h-10 rounded-full bg-white shadow-sm border border-black/5 flex items-center justify-center text-gray-400 hover:text-radiant-pink transition-colors"
-              >
-                <LogOut size={20} />
-              </button>
-            </div>
-          )}
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            {renderAppContent()}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    );
   };
 
   return (
-    <div className={cn("min-h-screen bg-radiant-bg", view === "app" && "pb-32")}>
-      <div className={cn(view === "app" ? "max-w-2xl mx-auto px-6 pt-12" : "w-full")}>
-        <AnimatePresence mode="wait">
-          {renderContent()}
-        </AnimatePresence>
-      </div>
-      {view === "app" && <Navigation activeTab={activeTab} setActiveTab={setActiveTab} role={userRole} />}
-    </div>
+    <AnimatePresence mode="wait">
+      {!hasStarted ? (
+        <motion.div key="landing">
+          <LandingPage onGetStarted={handleGetStarted} />
+        </motion.div>
+
+      ) : !selectedRole ? (
+        <motion.div key="role">
+          <RoleSelector onSelectRole={(r) => setSelectedRole(r.role)} />
+        </motion.div>
+
+      ) : !user ? (
+        <motion.div key="onboarding">
+          {selectedRole === "student" && <StudentOnboarding onComplete={handleFinishOnboarding} />}
+          {selectedRole === "parent" && <ParentOnboarding onComplete={handleFinishOnboarding} />}
+          {selectedRole === "school" && <SchoolOnboarding onComplete={handleFinishOnboarding} />}
+          {selectedRole === "ngo" && <NGOOnboarding onComplete={handleFinishOnboarding} />}
+        </motion.div>
+
+      ) : showRoleSelector || !user.role ? (
+        <motion.div key="role-selector">
+          <RoleSelector onSelectRole={(r) => setSelectedRole(r.role)} />
+        </motion.div>
+
+      ) : (
+        <motion.div key="dashboard">
+          {renderDashboard()}
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

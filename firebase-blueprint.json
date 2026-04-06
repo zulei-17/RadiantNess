@@ -9,7 +9,10 @@
         "displayName": { "type": "string", "description": "The user's chosen name." },
         "streak": { "type": "integer", "description": "Current daily streak." },
         "confidenceScore": { "type": "integer", "description": "Current confidence score (0-100)." },
-        "userRole": { "type": "string", "enum": ["student", "parent", "school", "ngo_requester", "admin"], "description": "The user's primary role." },
+        "userRole": { "type": "string", "enum": ["student", "parent", "school", "ngo_business", "admin"], "description": "The user's primary role." },
+        "onboardingData": { "type": "object", "description": "Data collected during onboarding." },
+        "verificationData": { "type": "object", "description": "Data collected during verification (for schools/NGOs)." },
+        "verified": { "type": "boolean", "description": "Whether the user's role has been verified." },
         "schoolId": { "type": "string", "description": "Associated school ID (for teachers)." },
         "ngoId": { "type": "string", "description": "Associated NGO ID (for NGOs)." },
         "lastCheckIn": { "type": "string", "format": "date-time", "description": "Last time the user checked in." },
@@ -61,7 +64,7 @@
         "schoolId": { "type": "string" },
         "productType": { "type": "string" },
         "quantity": { "type": "integer" },
-        "status": { "type": "string", "enum": ["pending", "approved", "shipped", "delivered"] },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "shipped", "delivered"] },
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["requesterUid", "productType", "quantity", "status", "timestamp"]

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowRight, ArrowLeft, CheckCircle2, Building2, Users, HeartHandshake, MapPin, Package, User, GraduationCap, Bell, QrCode, Mail } from "lucide-react";
+import { ArrowRight, ArrowLeft, Building2, Users, HeartHandshake, MapPin, Package, User, GraduationCap, Bell, QrCode, Mail } from "lucide-react";
 import { cn } from "../lib/utils";
 
 const COUNTRIES = [
@@ -66,6 +66,16 @@ const CITIES: Record<string, { id: string; text: string; value: string }[]> = {
 
 const ROLE_QUESTIONS: Record<string, any[]> = {
   parent: [
+    {
+      id: "parent_basic",
+      type: "input",
+      question: "Parent Identity",
+      description: "Tell us about yourself and your student.",
+      fields: [
+        { id: "fullName", label: "Your Full Name", placeholder: "e.g. John Smith", icon: User },
+        { id: "studentName", label: "Student's Full Name", placeholder: "e.g. Jane Smith", icon: GraduationCap },
+      ],
+    },
     {
       id: "primary_need",
       question: "Why does your young girl need this app the most?",
@@ -281,12 +291,19 @@ interface RoleOnboardingProps {
 export default function RoleOnboarding({ role, onComplete, onBack }: RoleOnboardingProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
-  const [isFinished, setIsFinished] = useState(false);
   
   const questions = ROLE_QUESTIONS[role] || [];
+
+  useEffect(() => {
+    if (questions.length === 0) {
+      onComplete({});
+    }
+  }, [questions, onComplete]);
+
   const currentQuestion = questions[currentStep];
 
   const handleNext = () => {
+    if (!currentQuestion) return;
     let nextStep = currentStep + 1;
     while (nextStep < questions.length && questions[nextStep].condition && !questions[nextStep].condition(answers)) {
       nextStep++;
@@ -295,11 +312,15 @@ export default function RoleOnboarding({ role, onComplete, onBack }: RoleOnboard
     if (nextStep < questions.length) {
       setCurrentStep(nextStep);
     } else {
-      setIsFinished(true);
+      onComplete(answers);
     }
   };
 
   const handleBack = () => {
+    if (currentStep === 0) {
+      onBack();
+      return;
+    }
     let prevStep = currentStep - 1;
     while (prevStep >= 0 && questions[prevStep].condition && !questions[prevStep].condition(answers)) {
       prevStep--;
@@ -313,11 +334,25 @@ export default function RoleOnboarding({ role, onComplete, onBack }: RoleOnboard
   };
 
   const handleOptionSelect = (questionId: string, value: string) => {
-    setAnswers(prev => ({ ...prev, [questionId]: value }));
-    setTimeout(() => handleNext(), 300);
+    if (!currentQuestion) return;
+    const newAnswers = { ...answers, [questionId]: value };
+    setAnswers(newAnswers);
+    setTimeout(() => {
+      let nextStep = currentStep + 1;
+      while (nextStep < questions.length && questions[nextStep].condition && !questions[nextStep].condition(newAnswers)) {
+        nextStep++;
+      }
+
+      if (nextStep < questions.length) {
+        setCurrentStep(nextStep);
+      } else {
+        onComplete(newAnswers);
+      }
+    }, 300);
   };
 
   const handleMultiSelect = (questionId: string, value: string) => {
+    if (!currentQuestion) return;
     setAnswers(prev => {
       const current = prev[questionId] || [];
       const updated = current.includes(value)
@@ -328,6 +363,7 @@ export default function RoleOnboarding({ role, onComplete, onBack }: RoleOnboard
   };
 
   const handleInputChange = (fieldId: string, value: string) => {
+    if (!currentQuestion) return;
     setAnswers(prev => ({
       ...prev,
       [currentQuestion.id]: {
@@ -338,6 +374,7 @@ export default function RoleOnboarding({ role, onComplete, onBack }: RoleOnboard
   };
 
   const isInputStepValid = () => {
+    if (!currentQuestion) return false;
     if (currentQuestion.type === "multi_select") {
       return (answers[currentQuestion.id] || []).length > 0;
     }
@@ -346,31 +383,10 @@ export default function RoleOnboarding({ role, onComplete, onBack }: RoleOnboard
     return currentQuestion.fields.every((f: any) => f.optional || stepData[f.id]?.trim());
   };
 
-  const progress = ((currentStep + 1) / questions.length) * 100;
+  const progress = questions.length > 0 ? ((currentStep + 1) / questions.length) * 100 : 0;
 
-  if (isFinished) {
-    return (
-      <div className="min-h-screen bg-radiant-bg flex flex-col items-center justify-center px-6 py-12 text-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-20 h-20 bg-radiant-pink rounded-full flex items-center justify-center text-white mb-8 shadow-xl"
-        >
-          <CheckCircle2 size={40} />
-        </motion.div>
-        <h2 className="text-4xl font-serif mb-4">Registration Complete!</h2>
-        <p className="text-gray-600 mb-12 max-w-xs mx-auto">
-          Thank you for providing this information. It helps us tailor the RadiantNess experience for you.
-        </p>
-        <button
-          onClick={() => onComplete(answers)}
-          className="w-full max-w-xs bg-radiant-pink text-white py-5 rounded-full font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-shadow active:scale-95"
-        >
-          Continue
-          <ArrowRight size={18} />
-        </button>
-      </div>
-    );
+  if (questions.length === 0 || !currentQuestion) {
+    return null;
   }
 
   return (
@@ -530,6 +546,8 @@ export default function RoleOnboarding({ role, onComplete, onBack }: RoleOnboard
                       </div>
                       <input
                         type="text"
+                        value={answers[currentQuestion.id] || ""}
+                        onChange={(e) => setAnswers(prev => ({ ...prev, [currentQuestion.id]: e.target.value }))}
                         placeholder="Enter child's account name"
                         className="w-full bg-gray-50 rounded-[24px] py-6 pl-16 pr-8 shadow-inner border border-black/5 focus:outline-none focus:ring-4 focus:ring-radiant-pink/10 text-lg transition-all"
                       />

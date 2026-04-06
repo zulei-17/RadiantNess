@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { Sparkles, ArrowRight, Heart, Users, BookOpen, MessageCircle, Clock, ShieldCheck, Package, TrendingUp, GraduationCap, ClipboardList } from "lucide-react";
-import { cn } from "@/src/lib/utils";
+import { cn } from "../lib/utils";
 import Logo from "./Logo";
 import { User as FirebaseUser } from "firebase/auth";
 
@@ -9,10 +9,10 @@ interface LandingPageProps {
   onSafety: () => void;
   onSkip: () => void;
   onLogin: () => void;
-  user: FirebaseUser | null;
+  onReset: () => void;
 }
 
-export default function LandingPage({ onStart, onSafety, onSkip, onLogin, user }: LandingPageProps) {
+export default function LandingPage({ onStart, onSafety, onSkip, onLogin, onReset }: LandingPageProps) {
   return (
     <div className="min-h-screen bg-radiant-bg text-radiant-ink font-sans">
       {/* Navigation */}
@@ -27,29 +27,18 @@ export default function LandingPage({ onStart, onSafety, onSkip, onLogin, user }
           <a href="#partners" className="hover:text-radiant-pink transition-colors">Partners</a>
         </div>
         <div className="flex items-center gap-4">
-          {!user ? (
-            <>
-              <button 
-                onClick={onLogin}
-                className="text-sm font-bold text-gray-500 hover:text-radiant-pink transition-colors"
-              >
-                Log in
-              </button>
-              <button 
-                onClick={onStart}
-                className="bg-radiant-pink text-white px-5 py-2 rounded-full text-sm font-bold shadow-sm hover:shadow-md transition-all active:scale-95"
-              >
-                Join free
-              </button>
-            </>
-          ) : (
-            <button 
-              onClick={onStart}
-              className="bg-radiant-pink text-white px-5 py-2 rounded-full text-sm font-bold shadow-sm hover:shadow-md transition-all active:scale-95"
-            >
-              Sign In
-            </button>
-          )}
+          <button 
+            onClick={onLogin}
+            className="text-sm font-bold text-gray-500 hover:text-radiant-pink transition-colors"
+          >
+            Log in
+          </button>
+          <button 
+            onClick={onStart}
+            className="bg-radiant-pink text-white px-5 py-2 rounded-full text-sm font-bold shadow-sm hover:shadow-md transition-all active:scale-95"
+          >
+            Sign up
+          </button>
         </div>
       </nav>
 
@@ -77,18 +66,22 @@ export default function LandingPage({ onStart, onSafety, onSkip, onLogin, user }
               onClick={onStart}
               className="w-full sm:w-auto bg-radiant-pink text-white px-10 py-5 rounded-full font-bold uppercase tracking-widest text-sm shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
             >
-              {user ? "Sign In" : "Start your journey"}
+              Sign up
               <ArrowRight size={18} />
             </button>
-            {!user && (
-              <button 
-                onClick={onSkip}
-                className="w-full sm:w-auto bg-white border border-black/5 px-10 py-5 rounded-full font-bold uppercase tracking-widest text-sm shadow-sm hover:shadow-md transition-all active:scale-95"
-              >
-                Continue without account
-              </button>
-            )}
+            <button 
+              onClick={onLogin}
+              className="w-full sm:w-auto bg-white border border-black/5 px-10 py-5 rounded-full font-bold uppercase tracking-widest text-sm shadow-sm hover:shadow-md transition-all active:scale-95"
+            >
+              Log in
+            </button>
           </div>
+          <button 
+            onClick={onReset}
+            className="mt-8 text-[10px] uppercase tracking-[0.2em] text-gray-400 hover:text-radiant-pink transition-colors"
+          >
+            Trouble logging in? Try resetting the app.
+          </button>
         </motion.div>
       </section>
 

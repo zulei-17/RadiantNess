@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Package, Plus, Clock, CheckCircle, AlertCircle, TrendingUp, Users, MapPin } from "lucide-react";
-import { db, auth, handleFirestoreError, OperationType } from "../../lib/firebase";
+import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, updateDoc, doc, limit } from "firebase/firestore";
-import { cn } from "../../lib/utils";
+import { cn } from "../lib/utils";
 
-export default function NGODashboard() {
+export default function NGODashboard({ user }: { user: any }) {
   const [requests, setRequests] = useState<any[]>([]);
   const [donations, setDonations] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
@@ -120,33 +120,115 @@ export default function NGODashboard() {
       </section>
 
       <section>
-        <h3 className="text-xl font-serif mb-4">Pending Requests</h3>
-        <div className="space-y-3">
-          {requests.filter(r => r.status === "pending").map((request) => (
-            <div key={request.id} className="bg-white p-4 rounded-[20px] border border-black/5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-radiant-bg flex items-center justify-center text-radiant-pink">
-                    <Package size={20} />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-sm">{request.productType}</h4>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Qty: {request.quantity}</p>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-serif">Manage Requests</h3>
+          <div className="flex gap-2">
+            {["pending", "approved", "shipped"].map((status) => (
+              <button
+                key={status}
+                className={cn(
+                  "text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border transition-all",
+                  requests.some(r => r.status === status) ? "border-radiant-pink/20 text-radiant-pink" : "border-transparent text-gray-400"
+                )}
+              >
+                {status} ({requests.filter(r => r.status === status).length})
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {/* Pending Section */}
+          {requests.filter(r => r.status === "pending").length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">New Requests</h4>
+              {requests.filter(r => r.status === "pending").map((request) => (
+                <div key={request.id} className="bg-white p-4 rounded-[20px] border border-black/5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-radiant-bg flex items-center justify-center text-radiant-pink">
+                        <Package size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm">{request.productType}</h4>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Qty: {request.quantity}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleUpdateStatus(request.id, "rejected")}
+                        className="px-3 py-1 bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-red-100 transition-colors"
+                      >
+                        Reject
+                      </button>
+                      <button 
+                        onClick={() => handleUpdateStatus(request.id, "approved")}
+                        className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-green-100 transition-colors"
+                      >
+                        Approve
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => handleUpdateStatus(request.id, "approved")}
-                    className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-green-100 transition-colors"
-                  >
-                    Approve
-                  </button>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
-          {requests.filter(r => r.status === "pending").length === 0 && (
-            <p className="text-center py-12 text-gray-400 italic text-sm">No pending requests. Great job!</p>
+          )}
+
+          {/* Approved Section */}
+          {requests.filter(r => r.status === "approved").length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-green-500">Approved & Ready to Ship</h4>
+              {requests.filter(r => r.status === "approved").map((request) => (
+                <div key={request.id} className="bg-white p-4 rounded-[20px] border border-green-100 bg-green-50/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                        <CheckCircle size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm">{request.productType}</h4>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Qty: {request.quantity}</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleUpdateStatus(request.id, "shipped")}
+                      className="px-4 py-1.5 bg-radiant-pink text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:scale-105 transition-transform shadow-sm"
+                    >
+                      Mark as Shipped
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Shipped Section */}
+          {requests.filter(r => r.status === "shipped").length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-blue-500">In Transit</h4>
+              {requests.filter(r => r.status === "shipped").map((request) => (
+                <div key={request.id} className="bg-white p-4 rounded-[20px] border border-blue-100 bg-blue-50/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                        <Clock size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm">{request.productType}</h4>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Status: Shipped</p>
+                      </div>
+                    </div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                      On the way
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {requests.length === 0 && (
+            <p className="text-center py-12 text-gray-400 italic text-sm">No requests found. You're all caught up!</p>
           )}
         </div>
       </section>
