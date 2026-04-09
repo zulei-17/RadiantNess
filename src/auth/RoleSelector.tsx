@@ -1,12 +1,14 @@
 import { motion } from "motion/react";
-import { User, GraduationCap, Users, HeartHandshake, ArrowLeft, School } from "lucide-react";
+import { User, GraduationCap, Users, HeartHandshake, ArrowLeft, School, LogOut } from "lucide-react";
 import { cn } from "../lib/utils";
+import { auth, logout } from "../lib/firebase";
 
 interface RoleSelectorProps {
   onSelectRole: (user: { role: "student" | "parent" | "school" | "ngo" }) => void;
 }
 
 export default function RoleSelector({ onSelectRole }: RoleSelectorProps) {
+  const user = auth.currentUser;
   const roles = [
     {
       id: "student",
@@ -73,6 +75,30 @@ export default function RoleSelector({ onSelectRole }: RoleSelectorProps) {
             </motion.button>
           ))}
         </div>
+
+        {user && (
+          <div className="flex flex-col gap-2 pt-4">
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              onClick={() => logout()}
+              className="flex items-center gap-2 mx-auto text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-radiant-pink transition-colors"
+            >
+              <LogOut size={12} />
+              Sign Out ({user.email})
+            </motion.button>
+            <button 
+              onClick={() => {
+                if (window.confirm("Reset all app data and sign out? This will clear your local cache and session.")) {
+                  import("../lib/firebase").then(m => m.resetUserData());
+                }
+              }}
+              className="text-[10px] font-bold uppercase tracking-widest text-gray-300 hover:text-red-400 transition-colors"
+            >
+              Reset App Data
+            </button>
+          </div>
+        )}
 
       </motion.div>
     </div>

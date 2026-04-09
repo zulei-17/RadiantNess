@@ -550,6 +550,16 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
           </div>
           <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
             <p className="text-sm text-gray-500">© 2026 RadiantNess. All rights reserved.</p>
+            <button 
+              onClick={() => {
+                if (window.confirm("Reset all app data and sign out? This will clear your local cache and session.")) {
+                  import("../lib/firebase").then(m => m.resetUserData());
+                }
+              }}
+              className="text-[10px] font-bold uppercase tracking-widest text-gray-300 hover:text-red-400 transition-colors"
+            >
+              Reset App Data
+            </button>
             <div className="flex gap-6">
               <div className="w-5 h-5 bg-gray-100 rounded-full" />
               <div className="w-5 h-5 bg-gray-100 rounded-full" />

@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
-import { Home, MessageSquare, BookOpen, Users, Heart, Settings } from "lucide-react";
+import { Home, MessageSquare, BookOpen, Users, Heart, Settings, LogOut } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+import { logout } from "@/src/lib/firebase";
 
 interface NavigationProps {
   activeTab: string;
@@ -71,6 +72,14 @@ export default function Navigation({ activeTab, setActiveTab, role }: Navigation
             )}
           </button>
         ))}
+        
+        <button
+          onClick={() => logout()}
+          className="flex flex-col items-center gap-1 text-gray-400 hover:text-radiant-pink transition-colors"
+        >
+          <LogOut size={24} />
+          <span className="text-[10px] font-medium uppercase tracking-wider">Sign Out</span>
+        </button>
       </div>
     </nav>
   );

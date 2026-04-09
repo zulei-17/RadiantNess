@@ -5,7 +5,6 @@ import { cn } from "@/src/lib/utils";
 
 interface StudentOnboardingQuizProps {
   onComplete: (data: any) => void;
-  onSkip: () => void;
   onBack: () => void;
 }
 
@@ -203,7 +202,7 @@ const QUESTIONS = [
   },
 ];
 
-export default function StudentOnboardingQuiz({ onComplete, onSkip, onBack }: StudentOnboardingQuizProps) {
+export default function StudentOnboardingQuiz({ onComplete, onBack }: StudentOnboardingQuizProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [name, setName] = useState("");
@@ -353,12 +352,6 @@ export default function StudentOnboardingQuiz({ onComplete, onSkip, onBack }: St
                   Continue
                   <ArrowRight size={18} />
                 </motion.button>
-                <button 
-                  onClick={onSkip}
-                  className="w-full text-gray-400 text-xs font-bold uppercase tracking-widest hover:text-radiant-pink transition-colors"
-                >
-                  Continue without account
-                </button>
               </div>
             ) : (
               <div className="space-y-10">

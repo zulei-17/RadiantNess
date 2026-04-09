@@ -63,21 +63,68 @@ export default function App() {
   // 🔥 NEW: finish onboarding → THEN login
   const handleFinishOnboarding = async (answers: any) => {
     try {
-      await signInWithGoogle();
+      let currentUser = auth.currentUser;
+      
+      // If not logged in, sign in first
+      if (!currentUser) {
+        currentUser = await signInWithGoogle();
+      }
 
-      if (auth.currentUser && selectedRole) {
+      if (currentUser && selectedRole) {
+        const uid = currentUser.uid;
+        const isStudent = selectedRole === "student";
+
+        // Calculate needsSupplies for students
+        const needsSupplies = isStudent ? (
+          answers?.answers?.help_needed === "sanitary_products" ||
+          answers?.answers?.help_needed === "clothes" ||
+          answers?.answers?.help_needed === "stationery" ||
+          answers?.answers?.attendance_barriers === "sanitary_products" ||
+          answers?.answers?.attendance_barriers === "clothes" ||
+          answers?.answers?.attendance_barriers === "stationery" ||
+          answers?.answers?.basic_needs === "no"
+        ) : false;
+
+        // 1. Save public profile (no email or sensitive details for students)
         await setDoc(
-          doc(db, "users", auth.currentUser.uid),
+          doc(db, "users", uid),
           {
             userRole: selectedRole,
-            onboardingData: answers, // 🔥 THIS IS KEY
+            uid: uid,
+            displayName: currentUser.displayName || answers?.name || "Radiant User",
+            photoURL: currentUser.photoURL,
             createdAt: serverTimestamp(),
-            email: auth.currentUser.email,
-            displayName: auth.currentUser.displayName,
-            photoURL: auth.currentUser.photoURL
+            streak: 0,
+            confidenceScore: 0,
+            needsSupplies: needsSupplies, // Non-sensitive flag
+            // Only store onboardingData in public profile if NOT a student
+            ...(isStudent ? {} : { onboardingData: answers, email: currentUser.email })
           },
           { merge: true }
         );
+
+        // 2. Save private details (Admin ONLY access)
+        if (isStudent) {
+          await setDoc(
+            doc(db, "student_private_details", uid),
+            {
+              uid: uid,
+              email: currentUser.email,
+              onboardingData: answers,
+              updatedAt: serverTimestamp()
+            }
+          );
+        }
+
+        // 3. Update local user state to trigger dashboard transition
+        const userDoc = await getDoc(doc(db, "users", uid));
+        if (userDoc.exists()) {
+          setUser({
+            ...currentUser,
+            ...userDoc.data(),
+            role: selectedRole
+          });
+        }
       }
     } catch (error) {
       console.error(error);
@@ -98,7 +145,7 @@ export default function App() {
     if (!role) return <div>No Role Assigned</div>;
     switch (role) {
       case "student":
-        return <StudentDashboard user={user} />;
+        return <StudentDashboard user={user} userName={user.onboardingData?.name || user.displayName || "Radiant"} onboardingData={user.onboardingData} />;
       case "parent":
         return <ParentDashboard user={user} />;
       case "school":
@@ -119,22 +166,17 @@ export default function App() {
           <LandingPage onGetStarted={handleGetStarted} />
         </motion.div>
 
-      ) : !selectedRole ? (
+      ) : !selectedRole && (!user || !user.role) ? (
         <motion.div key="role">
           <RoleSelector onSelectRole={(r) => setSelectedRole(r.role)} />
         </motion.div>
 
-      ) : !user ? (
+      ) : selectedRole && (!user || !user.role) ? (
         <motion.div key="onboarding">
-          {selectedRole === "student" && <StudentOnboarding onComplete={handleFinishOnboarding} />}
-          {selectedRole === "parent" && <ParentOnboarding onComplete={handleFinishOnboarding} />}
-          {selectedRole === "school" && <SchoolOnboarding onComplete={handleFinishOnboarding} />}
-          {selectedRole === "ngo" && <NGOOnboarding onComplete={handleFinishOnboarding} />}
-        </motion.div>
-
-      ) : showRoleSelector || !user.role ? (
-        <motion.div key="role-selector">
-          <RoleSelector onSelectRole={(r) => setSelectedRole(r.role)} />
+          {selectedRole === "student" && <StudentOnboarding onComplete={handleFinishOnboarding} onBack={() => setSelectedRole(null)} />}
+          {selectedRole === "parent" && <ParentOnboarding onComplete={handleFinishOnboarding} onBack={() => setSelectedRole(null)} />}
+          {selectedRole === "school" && <SchoolOnboarding onComplete={handleFinishOnboarding} onBack={() => setSelectedRole(null)} />}
+          {selectedRole === "ngo" && <NGOOnboarding onComplete={handleFinishOnboarding} onBack={() => setSelectedRole(null)} />}
         </motion.div>
 
       ) : (

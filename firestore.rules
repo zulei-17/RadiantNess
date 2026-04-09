@@ -87,7 +87,7 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return hasRequiredFields(['uid', 'displayName', 'streak', 'confidenceScore', 'createdAt']) &&
-             hasOnlyAllowedFields(['uid', 'displayName', 'streak', 'confidenceScore', 'createdAt', 'lastCheckIn', 'role', 'userRole', 'onboardingData', 'verificationData', 'verified', 'schoolId', 'ngoId']) &&
+             hasOnlyAllowedFields(['uid', 'displayName', 'streak', 'confidenceScore', 'createdAt', 'lastCheckIn', 'role', 'userRole', 'onboardingData', 'verificationData', 'verified', 'schoolId', 'ngoId', 'needsSupplies', 'photoURL', 'email']) &&
              data.uid == request.auth.uid &&
              data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
              data.streak is number && data.streak >= 0 &&
@@ -96,7 +96,15 @@ service cloud.firestore {
              (!('onboardingData' in data) || data.onboardingData is map) &&
              (!('verificationData' in data) || data.verificationData is map) &&
              (!('verified' in data) || data.verified is bool) &&
+             (!('needsSupplies' in data) || data.needsSupplies is bool) &&
              (data.createdAt is timestamp || data.createdAt == request.time);
+    }
+
+    function isValidPrivateDetails(data) {
+      return hasRequiredFields(['uid', 'email', 'onboardingData']) &&
+             data.uid == request.auth.uid &&
+             data.email is string &&
+             data.onboardingData is map;
     }
 
     function isValidMood(data, userId) {
@@ -127,20 +135,35 @@ service cloud.firestore {
 
     function isValidRequest(data) {
       return hasRequiredFields(['requesterUid', 'productType', 'quantity', 'status', 'timestamp']) &&
-             hasOnlyAllowedFields(['requesterUid', 'schoolId', 'productType', 'quantity', 'status', 'timestamp']) &&
+             hasOnlyAllowedFields(['requesterUid', 'schoolId', 'productType', 'quantity', 'status', 'location', 'rejectionReason', 'timestamp']) &&
              data.requesterUid is string &&
              data.productType is string &&
              data.quantity is number && data.quantity > 0 &&
              data.status in ['pending', 'approved', 'rejected', 'shipped', 'delivered'] &&
+             (!('location' in data) || data.location is map) &&
+             (!('rejectionReason' in data) || data.rejectionReason is string) &&
              data.timestamp is timestamp;
     }
 
     function isValidDonation(data) {
-      return hasRequiredFields(['donorUid', 'amount', 'productType', 'timestamp']) &&
-             hasOnlyAllowedFields(['donorUid', 'ngoId', 'amount', 'productType', 'timestamp']) &&
+      return hasRequiredFields(['donorUid', 'amount', 'donorType', 'productType', 'status', 'timestamp']) &&
+             hasOnlyAllowedFields(['donorUid', 'ngoId', 'amount', 'donorType', 'productType', 'schoolName', 'brand', 'urgency', 'status', 'timestamp']) &&
              data.donorUid == request.auth.uid &&
              data.amount is number && data.amount > 0 &&
+             data.donorType in ['school', 'individual'] &&
              data.productType is string &&
+             data.status in ['approved', 'shipped'] &&
+             (!('urgency' in data) || data.urgency in ['within a week', 'within this month', 'within the next 2 months']) &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidAnnouncement(data) {
+      return hasRequiredFields(['schoolUid', 'type', 'title', 'content', 'timestamp']) &&
+             hasOnlyAllowedFields(['schoolUid', 'schoolName', 'type', 'title', 'content', 'timestamp']) &&
+             data.schoolUid == request.auth.uid &&
+             data.type in ['supplies', 'workshop', 'session', 'general'] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.content is string && data.content.size() >= 1 && data.content.size() <= 2000 &&
              data.timestamp is timestamp;
     }
 
@@ -172,6 +195,13 @@ service cloud.firestore {
       }
     }
 
+    match /student_private_details/{userId} {
+      allow read: if isAdmin();
+      allow create: if isOwner(userId) && isValidPrivateDetails(request.resource.data);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     match /community_chat/{messageId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isValidChatMessage(request.resource.data);
@@ -188,7 +218,15 @@ service cloud.firestore {
     match /donations/{donationId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && (isNGO() || isAdmin()) && isValidDonation(request.resource.data);
-      allow update, delete: if isAdmin();
+      allow update: if isAuthenticated() && (isNGO() || isAdmin()) && isValidDonation(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (isSchool() || isAdmin()) && isValidAnnouncement(request.resource.data);
+      allow update: if isAuthenticated() && (isSchool() || isAdmin()) && isValidAnnouncement(request.resource.data);
+      allow delete: if isAuthenticated() && (isSchool() || isAdmin()) && request.auth.uid == resource.data.schoolUid;
     }
   }
 }

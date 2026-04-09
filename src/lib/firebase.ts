@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, Timestamp, terminate, clearIndexedDbPersistence } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
 
 // Initialize Firebase
@@ -44,6 +44,30 @@ export const signInWithGoogle = async () => {
 };
 
 export const logout = () => auth.signOut();
+
+export const resetUserData = async () => {
+  if (!auth.currentUser) return;
+  const uid = auth.currentUser.uid;
+  try {
+    // 1. Delete the user document from Firestore
+    await deleteDoc(doc(db, "users", uid));
+    
+    // 2. Delete private details if they exist
+    await deleteDoc(doc(db, "student_private_details", uid));
+    
+    // 3. Sign out
+    await auth.signOut();
+    
+    // 3. Clear Firestore local cache (IndexedDB)
+    await terminate(db);
+    await clearIndexedDbPersistence(db);
+    
+    // 4. Force reload to clear any local React state
+    window.location.reload();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `users/${uid}`);
+  }
+};
 
 // Firestore Error Handler Spec
 export enum OperationType {

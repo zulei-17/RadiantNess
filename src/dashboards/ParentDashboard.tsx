@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Package, Plus, Clock, CheckCircle, AlertCircle, BarChart3, ClipboardList } from "lucide-react";
-import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
+import { Package, Plus, Clock, CheckCircle, AlertCircle, BarChart3, ClipboardList, RefreshCw, LogOut } from "lucide-react";
+import { db, auth, handleFirestoreError, OperationType, resetUserData, logout } from "../lib/firebase";
 import { collection, addDoc, query, where, onSnapshot, serverTimestamp, orderBy, doc } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import WellBeingAnalytics from "./WellBeingAnalytics";
@@ -11,6 +11,7 @@ export default function ParentDashboard({ user }: { user: any }) {
   const [requests, setRequests] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [newRequest, setNewRequest] = useState({ productType: "Pads", quantity: 50 });
 
   useEffect(() => {
@@ -72,6 +73,23 @@ export default function ParentDashboard({ user }: { user: any }) {
 
   return (
     <div className="space-y-8">
+      <div className="flex justify-end gap-3 -mb-4">
+        <button 
+          onClick={() => setShowResetConfirm(true)}
+          className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-red-500 transition-colors"
+        >
+          <RefreshCw size={12} />
+          Reset Profile
+        </button>
+        <button 
+          onClick={() => logout()}
+          className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-radiant-pink transition-colors"
+        >
+          <LogOut size={12} />
+          Sign Out
+        </button>
+      </div>
+
       <header className="flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-serif">
@@ -208,6 +226,38 @@ export default function ParentDashboard({ user }: { user: any }) {
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-[32px] p-8 w-full max-w-sm shadow-2xl text-center"
+          >
+            <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center text-orange-500 mx-auto mb-4">
+              <RefreshCw size={32} />
+            </div>
+            <h2 className="text-2xl font-serif mb-2">Reset Profile?</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              This will clear all your onboarding data and sign you out. This action is permanent.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 py-3 rounded-full text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => resetUserData()}
+                className="flex-1 py-3 rounded-full text-sm font-medium bg-orange-500 text-white shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform"
+              >
+                Reset
+              </button>
+            </div>
           </motion.div>
         </div>
       )}

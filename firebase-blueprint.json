@@ -13,12 +13,25 @@
         "onboardingData": { "type": "object", "description": "Data collected during onboarding." },
         "verificationData": { "type": "object", "description": "Data collected during verification (for schools/NGOs)." },
         "verified": { "type": "boolean", "description": "Whether the user's role has been verified." },
+        "needsSupplies": { "type": "boolean", "description": "Whether the student needs supplies (derived from private onboarding data)." },
         "schoolId": { "type": "string", "description": "Associated school ID (for teachers)." },
         "ngoId": { "type": "string", "description": "Associated NGO ID (for NGOs)." },
         "lastCheckIn": { "type": "string", "format": "date-time", "description": "Last time the user checked in." },
         "createdAt": { "type": "string", "format": "date-time", "description": "When the account was created." }
       },
       "required": ["uid", "displayName", "streak", "confidenceScore"]
+    },
+    "PrivateStudentDetails": {
+      "title": "Private Student Details",
+      "description": "Sensitive student data accessible only by admins.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "onboardingData": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "onboardingData"]
     },
     "MoodLog": {
       "title": "Mood Log",
@@ -65,6 +78,8 @@
         "productType": { "type": "string" },
         "quantity": { "type": "integer" },
         "status": { "type": "string", "enum": ["pending", "approved", "rejected", "shipped", "delivered"] },
+        "location": { "type": "object", "description": "Location data of the requester." },
+        "rejectionReason": { "type": "string", "description": "Reason for rejecting the request." },
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["requesterUid", "productType", "quantity", "status", "timestamp"]
@@ -78,9 +93,28 @@
         "ngoId": { "type": "string" },
         "amount": { "type": "integer" },
         "productType": { "type": "string" },
+        "donorType": { "type": "string", "enum": ["school", "individual"] },
+        "schoolName": { "type": "string" },
+        "brand": { "type": "string" },
+        "urgency": { "type": "string", "enum": ["within a week", "within this month", "within the next 2 months"] },
+        "status": { "type": "string", "enum": ["approved", "shipped"] },
         "timestamp": { "type": "string", "format": "date-time" }
       },
-      "required": ["donorUid", "amount", "timestamp"]
+      "required": ["donorUid", "amount", "donorType", "productType", "status", "timestamp"]
+    },
+    "Announcement": {
+      "title": "School Announcement",
+      "description": "Notifications sent by schools to students.",
+      "type": "object",
+      "properties": {
+        "schoolUid": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "type": { "type": "string", "enum": ["supplies", "workshop", "session", "general"] },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["schoolUid", "type", "title", "content", "timestamp"]
     }
   },
   "firestore": {
@@ -96,6 +130,10 @@
       "schema": "Mission",
       "description": "User's mission progress."
     },
+    "/student_private_details/{userId}": {
+      "schema": "PrivateStudentDetails",
+      "description": "Sensitive student data (Admin only)."
+    },
     "/community_chat/{messageId}": {
       "schema": "ChatMessage",
       "description": "Global community chat messages."
@@ -107,6 +145,10 @@
     "/donations/{donationId}": {
       "schema": "Donation",
       "description": "Global donations."
+    },
+    "/announcements/{announcementId}": {
+      "schema": "Announcement",
+      "description": "School announcements for students."
     }
   }
 }
